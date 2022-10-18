@@ -1,0 +1,3 @@
+FROM eclipse-temurin:18-jre-alpine
+COPY /api_build/libs/api-*.jar api.jar
+ENTRYPOINT ["java", "-jar", "api.jar"]

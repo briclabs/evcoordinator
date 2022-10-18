@@ -1,0 +1,8 @@
+/docker/api_build/libs/api-1.0.jar
+/.idea/
+/data/build/
+/docker/api_build/
+/.gradle/
+/gradle/
+/gradlew
+/gradlew.bat

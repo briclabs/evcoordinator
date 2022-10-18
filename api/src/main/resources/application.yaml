@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/evcoordinator
+    username: postgres-user
+    password: postgres-pass
+  liquibase:
+    drop-first: true
+logging:
+  level:
+    root: info

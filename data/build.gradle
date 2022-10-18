@@ -1,0 +1,21 @@
+plugins {
+    id 'java-library'
+    id 'idea'
+}
+
+group 'org.briclabs'
+version '1.0'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    runtimeOnly 'org.postgresql:postgresql:42.5.0'
+
+    testImplementation 'org.testng:testng:7.6.1'
+}
+
+tasks.named('test') {
+    useTestNG()
+}
