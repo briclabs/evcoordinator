@@ -13,5 +13,6 @@ public class ApiApp {
     public static void main(String[] args) {
         LOGGER.info("Starting EV Coordinator API application.");
         SpringApplication.run(ApiApp.class, args);
+        LOGGER.info("Started EV Coordinator API application.");
     }
 }

@@ -1,6 +1,7 @@
 /docker/api_build/libs/api-1.0.jar
 /.idea/
 /data/build/
+/data/src/main/java/net/briclabs/evcoordinator/generated
 /docker/api_build/
 /.gradle/
 /gradle/
