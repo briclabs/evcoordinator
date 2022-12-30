@@ -7,6 +7,8 @@ services:
     image: 'api:latest'
     build:
       context: .
+    ports:
+      - "8080:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -23,3 +25,8 @@ services:
       - POSTGRES_DB=evcoordinator
       - POSTGRES_USER=postgres-user
       - POSTGRES_PASSWORD=postgres-pass
+# Uncomment this to allow for direct DB access.
+#    ports:
+#      - "5432:5432"
+    expose:
+      - 5432

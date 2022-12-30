@@ -1,10 +1,13 @@
 spring:
   datasource:
     url: jdbc:postgresql://db:5432/evcoordinator
+    driverClassName: org.postgresql.Driver
     username: postgres-user
     password: postgres-pass
   liquibase:
     drop-first: true
+  jooq:
+    sql-dialect: Postgres
 logging:
   level:
     root: info

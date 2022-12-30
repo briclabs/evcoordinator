@@ -31,21 +31,22 @@ repositories {
 }
 
 dependencies {
-    implementation 'org.springframework.boot:spring-boot-gradle-plugin:3.0.0'
-    implementation 'org.springframework.boot:spring-boot-starter-jdbc:3.0.0'
-    implementation 'org.springframework.boot:spring-boot-starter-jooq:3.0.0'
+    api 'org.jooq:jooq:3.17.4'
+
+    implementation 'org.springframework.boot:spring-boot-gradle-plugin:3.0.1'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc:3.0.1'
+    implementation 'org.springframework.boot:spring-boot-starter-jooq:3.0.1'
     implementation 'org.jooq:jooq-meta-extensions-liquibase:3.17.4'
     implementation 'org.liquibase:liquibase-gradle-plugin:2.1.1'
     implementation 'org.liquibase:liquibase-core:4.9.1'
     implementation 'org.postgresql:postgresql:42.5.1'
-    implementation 'org.jooq:jooq:3.17.4'
     implementation 'org.jooq:jooq-meta:3.17.4'
     implementation 'org.jooq:jooq-codegen:3.17.4'
 
     jooqGenerator 'org.postgresql:postgresql:42.5.1'
     jooqGenerator 'org.liquibase:liquibase-core:4.9.1'
     jooqGenerator 'org.jooq:jooq-meta-extensions-liquibase:3.17.4'
-    jooqGenerator 'org.springframework.boot:spring-boot-starter-jdbc:3.0.0'
+    jooqGenerator 'org.springframework.boot:spring-boot-starter-jdbc:3.0.1'
     jooqGenerator(files("src/main/resources"))
 
     testImplementation 'org.testng:testng:7.7.0'
@@ -89,7 +90,18 @@ jooq {
                         deprecated = false
                         records = true
                         immutablePojos = true
+                        javadoc = false
                         fluentSetters = true
+                        nullableAnnotation = true
+                        nullableAnnotationType = 'org.springframework.lang.Nullable'
+                        nonnullAnnotation = true
+                        nonnullAnnotationType = 'org.springframework.lang.NonNull'
+                        springAnnotations = true
+                        daos = true
+                        springDao = true
+                        constructorPropertiesAnnotation = true
+                        constructorPropertiesAnnotationOnPojos = true
+                        constructorPropertiesAnnotationOnRecords = true
                     }
                     target {
                         directory = 'src/main/java/'

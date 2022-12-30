@@ -11,8 +11,8 @@ public class ApiApp {
     private final static Logger LOGGER = LoggerFactory.getLogger(ApiApp.class);
 
     public static void main(String[] args) {
-        LOGGER.info("Starting EV Coordinator API application.");
+        LOGGER.info("=================== Starting EV Coordinator API application. ===================");
         SpringApplication.run(ApiApp.class, args);
-        LOGGER.info("Started EV Coordinator API application.");
+        LOGGER.info("=================== Started EV Coordinator API application. ===================");
     }
 }
