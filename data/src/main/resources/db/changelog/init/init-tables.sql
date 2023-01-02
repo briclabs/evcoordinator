@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS participant (
 
 CREATE TABLE IF NOT EXISTS participant_association_record (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    self int NOT NULL,
-    associate int NOT NULL,
+    self bigint NOT NULL,
+    associate bigint NOT NULL,
     association text NOT NULL,
     time_recorded timestamp with time zone NOT NULL,
     PRIMARY KEY (id),
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS participant_association_record (
 
 CREATE TABLE IF NOT EXISTS data_history_record (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    actor_id int NOT NULL,
+    actor_id bigint NOT NULL,
     action_name text NOT NULL,
     table_source text NOT NULL,
     new_data json NOT NULL,
@@ -81,9 +81,9 @@ CREATE TABLE IF NOT EXISTS event_info (
 
 CREATE TABLE IF NOT EXISTS event_record (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    participant_id int NOT NULL,
+    participant_id bigint NOT NULL,
     action_type text NOT NULL,
-    event_id int NOT NULL,
+    event_id bigint NOT NULL,
     time_recorded timestamp with time zone NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_event_record_action_type FOREIGN KEY (action_type) REFERENCES event_record_action(event_action_type),
@@ -102,11 +102,11 @@ CREATE TABLE IF NOT EXISTS payment_info (
 
 CREATE TABLE IF NOT EXISTS payment_record (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    event_id int NOT NULL,
-    actor_id int NOT NULL,
+    event_id bigint NOT NULL,
+    actor_id bigint NOT NULL,
     payment_action_type text NOT NULL,
-    recipient_id int NOT NULL,
-    payment_id int NOT NULL,
+    recipient_id bigint NOT NULL,
+    payment_id bigint NOT NULL,
     time_recorded timestamp with time zone NOT NULL,
     PRIMARY KEY (id),
     CONSTRAINT fk_payment_event_id FOREIGN KEY (event_id) REFERENCES event_info(id),

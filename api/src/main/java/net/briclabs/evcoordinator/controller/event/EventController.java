@@ -1,9 +1,9 @@
-package net.briclabs.evcoordinator.event;
+package net.briclabs.evcoordinator.controller.event;
 
-import net.briclabs.evcoordinator.ApiController;
-import net.briclabs.evcoordinator.ApiVersion;
+import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.generated.tables.daos.EventRecordDao;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventRecord;
+import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -12,11 +12,15 @@ import java.util.Optional;
 
 
 @RestController
-@RequestMapping(ApiVersion.V1 + "/event")
+@RequestMapping(ApiController.V1 + "/event")
 public class EventController extends ApiController {
 
     @Autowired
     private EventRecordDao dao;
+
+    public EventController(DSLContext dslContext) {
+        super(dslContext);
+    }
 
     @GetMapping(value = "/{id}")
     public EventRecord findById(@PathVariable("id") Long id)
@@ -35,15 +39,15 @@ public class EventController extends ApiController {
 
     @PutMapping(value = "/{id}")
     @ResponseStatus(HttpStatus.OK)
-    public void update(@PathVariable("id") Long id, @RequestBody EventRecord event)
+    public void update(@PathVariable("id") Long id, @RequestBody EventRecord updatedEvent)
     {
         Optional<EventRecord> existingEvent = dao.findOptionalById(id);
         if (existingEvent.isEmpty()) {
-            create(event);
+            create(updatedEvent);
             return;
         }
-        if (!existingEvent.get().equals(event)) {
-            dao.update(event);
+        if (!existingEvent.get().equals(updatedEvent)) {
+            dao.update(updatedEvent);
         }
     }
 }

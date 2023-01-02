@@ -14,4 +14,5 @@ public class ApiConfig {
     public DefaultConfigurationCustomizer configurationCustomizer() {
         return c -> c.settings().withRenderQuotedNames(RenderQuotedNames.EXPLICIT_DEFAULT_UNQUOTED);
     }
+
 }

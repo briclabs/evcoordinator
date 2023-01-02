@@ -1,3 +1,5 @@
 rootProject.name = 'evcoordinator'
 include 'data'
 include 'api'
+include 'logic'
+
