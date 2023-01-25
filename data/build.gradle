@@ -85,8 +85,8 @@ jooq {
                         nonnullAnnotation = true
                         nonnullAnnotationType = 'org.springframework.lang.NonNull'
                         springAnnotations = true
-                        daos = true
-                        springDao = true
+                        daos = false
+                        springDao = false
                         constructorPropertiesAnnotation = true
                         constructorPropertiesAnnotationOnPojos = true
                         constructorPropertiesAnnotationOnRecords = true

@@ -13,8 +13,8 @@ INSERT INTO participant_type (participant_type) VALUES ('VENDOR'), ('VENUE'), ('
 CREATE TABLE IF NOT EXISTS participant_association_type ( association_type text UNIQUE NOT NULL );
 INSERT INTO participant_association_type (association_type) VALUES ('INVITEE'), ('CHILD'), ('PET');
 
-CREATE TABLE IF NOT EXISTS event_record_action ( event_action_type text UNIQUE NOT NULL );
-INSERT INTO event_record_action (event_action_type) VALUES ('REGISTERED');
+CREATE TABLE IF NOT EXISTS event_action ( event_action_type text UNIQUE NOT NULL );
+INSERT INTO event_action (event_action_type) VALUES ('REGISTERED');
 
 CREATE TABLE IF NOT EXISTS event_status ( event_status_type text UNIQUE NOT NULL );
 INSERT INTO event_status (event_status_type) VALUES ('CURRENT'), ('PAST'), ('CANCELLED');
@@ -25,8 +25,8 @@ INSERT INTO payment_instrument (payment_instrument_type) VALUES ('ELECTRONIC'), 
 CREATE TABLE IF NOT EXISTS payment_type ( payment_type text UNIQUE NOT NULL );
 INSERT INTO payment_type (payment_type) VALUES ('EXPENSE'), ('INCOME');
 
-CREATE TABLE IF NOT EXISTS payment_record_action ( payment_action_type text UNIQUE NOT NULL );
-INSERT INTO payment_record_action (payment_action_type) VALUES ('SENT'), ('REFUNDED');
+CREATE TABLE IF NOT EXISTS payment_action ( payment_action_type text UNIQUE NOT NULL );
+INSERT INTO payment_action (payment_action_type) VALUES ('SENT'), ('REFUNDED');
 
 CREATE TABLE IF NOT EXISTS participant (
    id bigint GENERATED ALWAYS AS IDENTITY,
@@ -45,17 +45,17 @@ CREATE TABLE IF NOT EXISTS participant (
    PRIMARY KEY (id),
    CONSTRAINT fk_participant_type FOREIGN KEY (participant_type) REFERENCES participant_type(participant_type) );
 
-CREATE TABLE IF NOT EXISTS participant_association_record (
+CREATE TABLE IF NOT EXISTS participant_association (
     id bigint GENERATED ALWAYS AS IDENTITY,
     self bigint NOT NULL,
     associate bigint NOT NULL,
     association text NOT NULL,
     time_recorded timestamp with time zone NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_participant_association_record_self FOREIGN KEY (self) REFERENCES participant(id),
-    CONSTRAINT fk_participant_association_record_associate FOREIGN KEY (associate) REFERENCES participant(id) );
+    CONSTRAINT fk_participant_association_self FOREIGN KEY (self) REFERENCES participant(id),
+    CONSTRAINT fk_participant_association_associate FOREIGN KEY (associate) REFERENCES participant(id) );
 
-CREATE TABLE IF NOT EXISTS data_history_record (
+CREATE TABLE IF NOT EXISTS data_history (
     id bigint GENERATED ALWAYS AS IDENTITY,
     actor_id bigint NOT NULL,
     action_name text NOT NULL,
@@ -64,9 +64,9 @@ CREATE TABLE IF NOT EXISTS data_history_record (
     old_data json NOT NULL,
     time_recorded timestamp with time zone NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_data_history_record_action_name FOREIGN KEY (action_name) REFERENCES data_history_type(history_type),
-    CONSTRAINT fk_data_history_record_table_source FOREIGN KEY (table_source) REFERENCES table_ref(table_ref),
-    CONSTRAINT fk_data_history_record_actor_id FOREIGN KEY (actor_id) REFERENCES participant(id) );
+    CONSTRAINT fk_data_history_action_name FOREIGN KEY (action_name) REFERENCES data_history_type(history_type),
+    CONSTRAINT fk_data_history_table_source FOREIGN KEY (table_source) REFERENCES table_ref(table_ref),
+    CONSTRAINT fk_data_history_actor_id FOREIGN KEY (actor_id) REFERENCES participant(id) );
 
 CREATE TABLE IF NOT EXISTS event_info (
     id bigint GENERATED ALWAYS AS IDENTITY,
@@ -79,20 +79,20 @@ CREATE TABLE IF NOT EXISTS event_info (
     PRIMARY KEY (id),
     CONSTRAINT fk_event_info_event_status FOREIGN KEY (event_status) REFERENCES event_status(event_status_type) );
 
-CREATE TABLE IF NOT EXISTS event_record (
+CREATE TABLE IF NOT EXISTS event (
     id bigint GENERATED ALWAYS AS IDENTITY,
     participant_id bigint NOT NULL,
     action_type text NOT NULL,
     event_id bigint NOT NULL,
     time_recorded timestamp with time zone NOT NULL,
     PRIMARY KEY (id),
-    CONSTRAINT fk_event_record_action_type FOREIGN KEY (action_type) REFERENCES event_record_action(event_action_type),
-    CONSTRAINT fk_event_record_event_id FOREIGN KEY (event_id) REFERENCES event_info(id),
-    CONSTRAINT fk_event_record_participant_id FOREIGN KEY (participant_id) REFERENCES participant(id) );
+    CONSTRAINT fk_event_action_type FOREIGN KEY (action_type) REFERENCES event_action(event_action_type),
+    CONSTRAINT fk_event_event_id FOREIGN KEY (event_id) REFERENCES event_info(id),
+    CONSTRAINT fk_event_participant_id FOREIGN KEY (participant_id) REFERENCES participant(id) );
 
 CREATE TABLE IF NOT EXISTS payment_info (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    amount numeric NOT NULL,
+    amount decimal(8, 8) NOT NULL,
     payment_type text NOT NULL,
     instrument_type text NOT NULL,
     time_recorded timestamp with time zone NOT NULL,
@@ -100,7 +100,7 @@ CREATE TABLE IF NOT EXISTS payment_info (
     CONSTRAINT fk_payment_info_action_type FOREIGN KEY (payment_type) REFERENCES payment_type(payment_type),
     CONSTRAINT fk_payment_info_instrument_type FOREIGN KEY (instrument_type) REFERENCES payment_instrument(payment_instrument_type) );
 
-CREATE TABLE IF NOT EXISTS payment_record (
+CREATE TABLE IF NOT EXISTS payment (
     id bigint GENERATED ALWAYS AS IDENTITY,
     event_id bigint NOT NULL,
     actor_id bigint NOT NULL,
@@ -112,5 +112,5 @@ CREATE TABLE IF NOT EXISTS payment_record (
     CONSTRAINT fk_payment_event_id FOREIGN KEY (event_id) REFERENCES event_info(id),
     CONSTRAINT fk_payment_actor_id FOREIGN KEY (actor_id) REFERENCES participant(id),
     CONSTRAINT fk_payment_recipient_id FOREIGN KEY (recipient_id) REFERENCES participant(id),
-    CONSTRAINT fk_payment_record_action_type FOREIGN KEY (payment_action_type) REFERENCES payment_record_action(payment_action_type),
+    CONSTRAINT fk_payment_action_type FOREIGN KEY (payment_action_type) REFERENCES payment_action(payment_action_type),
     CONSTRAINT fk_payment_id FOREIGN KEY (payment_id) REFERENCES payment_info(id) );
