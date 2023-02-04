@@ -1,36 +1,36 @@
 -- liquibase formatted sql
 
 -- changeset liquibase:1
-CREATE TABLE IF NOT EXISTS table_ref ( table_ref text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS table_ref ( table_ref text PRIMARY KEY );
 INSERT INTO table_ref (table_ref) VALUES ('PARTICIPANT'), ('EVENT'), ('PAYMENT'), ('DATA');
 
-CREATE TABLE IF NOT EXISTS data_history_type ( history_type text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS data_history_type ( history_type text PRIMARY KEY );
 INSERT INTO data_history_type (history_type) VALUES ('UPDATED');
 
-CREATE TABLE IF NOT EXISTS participant_type ( participant_type text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS participant_type ( participant_type text PRIMARY KEY );
 INSERT INTO participant_type (participant_type) VALUES ('VENDOR'), ('VENUE'), ('ATTENDEE');
 
-CREATE TABLE IF NOT EXISTS participant_association_type ( association_type text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS participant_association_type ( association_type text PRIMARY KEY );
 INSERT INTO participant_association_type (association_type) VALUES ('INVITEE'), ('CHILD'), ('PET');
 
-CREATE TABLE IF NOT EXISTS event_action ( event_action_type text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS event_action ( event_action_type text PRIMARY KEY );
 INSERT INTO event_action (event_action_type) VALUES ('REGISTERED');
 
-CREATE TABLE IF NOT EXISTS event_status ( event_status_type text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS event_status ( event_status_type text PRIMARY KEY );
 INSERT INTO event_status (event_status_type) VALUES ('CURRENT'), ('PAST'), ('CANCELLED');
 
-CREATE TABLE IF NOT EXISTS payment_instrument ( payment_instrument_type text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS payment_instrument ( payment_instrument_type text PRIMARY KEY );
 INSERT INTO payment_instrument (payment_instrument_type) VALUES ('ELECTRONIC'), ('CHECK'), ('CASH');
 
-CREATE TABLE IF NOT EXISTS payment_type ( payment_type text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS payment_type ( payment_type text PRIMARY KEY );
 INSERT INTO payment_type (payment_type) VALUES ('EXPENSE'), ('INCOME');
 
-CREATE TABLE IF NOT EXISTS payment_action ( payment_action_type text UNIQUE NOT NULL );
+CREATE TABLE IF NOT EXISTS payment_action ( payment_action_type text PRIMARY KEY );
 INSERT INTO payment_action (payment_action_type) VALUES ('SENT'), ('REFUNDED');
 
 CREATE TABLE IF NOT EXISTS participant (
    id bigint GENERATED ALWAYS AS IDENTITY,
-   participant_type text NOT NULL,
+   participant_type text REFERENCES participant_type(participant_type) NOT NULL,
    name_first character varying NOT NULL,
    name_last character varying NOT NULL,
    dob date NOT NULL,
@@ -41,32 +41,26 @@ CREATE TABLE IF NOT EXISTS participant (
    addr_zip int NOT NULL,
    addr_email character varying NOT NULL,
    phone_digits int NOT NULL,
-   time_recorded timestamp with time zone NOT NULL,
-   PRIMARY KEY (id),
-   CONSTRAINT fk_participant_type FOREIGN KEY (participant_type) REFERENCES participant_type(participant_type) );
+   time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+   PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS participant_association (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    self bigint NOT NULL,
-    associate bigint NOT NULL,
+    self bigint REFERENCES participant(id) NOT NULL,
+    associate bigint REFERENCES participant(id) NOT NULL,
     association text NOT NULL,
-    time_recorded timestamp with time zone NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_participant_association_self FOREIGN KEY (self) REFERENCES participant(id),
-    CONSTRAINT fk_participant_association_associate FOREIGN KEY (associate) REFERENCES participant(id) );
+    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS data_history (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    actor_id bigint NOT NULL,
-    action_name text NOT NULL,
-    table_source text NOT NULL,
+    actor_id bigint REFERENCES participant(id) NOT NULL,
+    action_name text REFERENCES data_history_type(history_type) NOT NULL,
+    table_source text REFERENCES table_ref(table_ref) NOT NULL,
     new_data json NOT NULL,
     old_data json NOT NULL,
-    time_recorded timestamp with time zone NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_data_history_action_name FOREIGN KEY (action_name) REFERENCES data_history_type(history_type),
-    CONSTRAINT fk_data_history_table_source FOREIGN KEY (table_source) REFERENCES table_ref(table_ref),
-    CONSTRAINT fk_data_history_actor_id FOREIGN KEY (actor_id) REFERENCES participant(id) );
+    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS event_info (
     id bigint GENERATED ALWAYS AS IDENTITY,
@@ -74,43 +68,32 @@ CREATE TABLE IF NOT EXISTS event_info (
     event_title character varying NOT NULL,
     date_start date NOT NULL,
     date_end date NOT NULL,
-    event_status text NOT NULL,
-    time_recorded timestamp with time zone NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_event_info_event_status FOREIGN KEY (event_status) REFERENCES event_status(event_status_type) );
+    event_status text REFERENCES event_status(event_status_type) NOT NULL,
+    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS event (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    participant_id bigint NOT NULL,
-    action_type text NOT NULL,
-    event_id bigint NOT NULL,
-    time_recorded timestamp with time zone NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_event_action_type FOREIGN KEY (action_type) REFERENCES event_action(event_action_type),
-    CONSTRAINT fk_event_event_id FOREIGN KEY (event_id) REFERENCES event_info(id),
-    CONSTRAINT fk_event_participant_id FOREIGN KEY (participant_id) REFERENCES participant(id) );
+    participant_id bigint REFERENCES participant(id) NOT NULL,
+    action_type text REFERENCES event_action(event_action_type) NOT NULL,
+    event_id bigint REFERENCES event_info(id) NOT NULL,
+    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS payment_info (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    amount decimal(8, 8) NOT NULL,
-    payment_type text NOT NULL,
-    instrument_type text NOT NULL,
-    time_recorded timestamp with time zone NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_payment_info_action_type FOREIGN KEY (payment_type) REFERENCES payment_type(payment_type),
-    CONSTRAINT fk_payment_info_instrument_type FOREIGN KEY (instrument_type) REFERENCES payment_instrument(payment_instrument_type) );
+    amount decimal(16, 8) NOT NULL,
+    payment_type text REFERENCES payment_type(payment_type) NOT NULL,
+    instrument_type text REFERENCES payment_instrument(payment_instrument_type) NOT NULL,
+    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS payment (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    event_id bigint NOT NULL,
-    actor_id bigint NOT NULL,
-    payment_action_type text NOT NULL,
-    recipient_id bigint NOT NULL,
-    payment_id bigint NOT NULL,
-    time_recorded timestamp with time zone NOT NULL,
-    PRIMARY KEY (id),
-    CONSTRAINT fk_payment_event_id FOREIGN KEY (event_id) REFERENCES event_info(id),
-    CONSTRAINT fk_payment_actor_id FOREIGN KEY (actor_id) REFERENCES participant(id),
-    CONSTRAINT fk_payment_recipient_id FOREIGN KEY (recipient_id) REFERENCES participant(id),
-    CONSTRAINT fk_payment_action_type FOREIGN KEY (payment_action_type) REFERENCES payment_action(payment_action_type),
-    CONSTRAINT fk_payment_id FOREIGN KEY (payment_id) REFERENCES payment_info(id) );
+    event_id bigint REFERENCES event_info(id) NOT NULL,
+    actor_id bigint REFERENCES participant(id) NOT NULL,
+    payment_action_type text REFERENCES payment_action(payment_action_type) NOT NULL,
+    recipient_id bigint REFERENCES participant(id) NOT NULL,
+    payment_id bigint REFERENCES payment_info(id) NOT NULL,
+    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id) );
