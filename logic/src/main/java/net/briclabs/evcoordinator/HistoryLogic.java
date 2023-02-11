@@ -3,7 +3,6 @@ package net.briclabs.evcoordinator;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
-import org.jooq.JSON;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,12 +17,12 @@ public class HistoryLogic extends Logic {
         stripOutUnknownFields(searchCriteria, DATA_HISTORY);
         List<Condition> matchConditions = new ArrayList<>();
         searchCriteria.forEach((key, value) -> {
-            buildPossibleCondition(DATA_HISTORY.ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(DATA_HISTORY.ACTION_NAME, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(DATA_HISTORY.ACTOR_ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(DATA_HISTORY.NEW_DATA, key, JSON.valueOf(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(DATA_HISTORY.OLD_DATA, key, JSON.valueOf(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(DATA_HISTORY.TABLE_SOURCE, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(DATA_HISTORY.ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(DATA_HISTORY.ACTION_NAME, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(DATA_HISTORY.ACTOR_ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(DATA_HISTORY.NEW_DATA, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(DATA_HISTORY.OLD_DATA, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(DATA_HISTORY.TABLE_SOURCE, key, value).ifPresent(matchConditions::add);
         });
         return matchConditions;
     }
@@ -32,6 +31,7 @@ public class HistoryLogic extends Logic {
         super(jooq);
     }
 
+    @Override
     public Optional<DataHistory> fetchById(Long id) {
         return jooq
                 .selectFrom(DATA_HISTORY)
@@ -39,6 +39,7 @@ public class HistoryLogic extends Logic {
                 .fetchOptionalInto(DataHistory.class);
     }
 
+    @Override
     public List<DataHistory> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
         return jooq
                 .selectFrom(DATA_HISTORY)

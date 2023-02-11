@@ -6,7 +6,6 @@ import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.tools.StringUtils;
 
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,24 +15,24 @@ import java.util.Optional;
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT;
 
-public class ParticipantLogic extends Logic {
+public class ParticipantLogic<P extends Participant> extends Logic implements WriteLogic<P> {
 
     static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
         stripOutUnknownFields(searchCriteria, PARTICIPANT);
         List<Condition> matchConditions = new ArrayList<>();
         searchCriteria.forEach((key, value) -> {
-            buildPossibleCondition(PARTICIPANT.ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.PARTICIPANT_TYPE, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.NAME_FIRST, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.NAME_LAST, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.DOB, key, LocalDate.parse(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.ADDR_STREET_1, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.ADDR_STREET_2, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.ADDR_CITY, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.ADDR_STATE_ABBR, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.ADDR_ZIP, key, Integer.parseInt(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.ADDR_EMAIL, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT.PHONE_DIGITS, key, Integer.parseInt(value)).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ID, key, value);
+            addPossibleCondition(PARTICIPANT.PARTICIPANT_TYPE, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.NAME_FIRST, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.NAME_LAST, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.DOB, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_STREET_1, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_STREET_2, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_CITY, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_STATE_ABBR, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_ZIP, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_EMAIL, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.PHONE_DIGITS, key, value).ifPresent(matchConditions::add);
         });
         return matchConditions;
     }
@@ -42,7 +41,8 @@ public class ParticipantLogic extends Logic {
         super(jooq);
     }
 
-    public boolean validateIsTrulyNew(Participant pojo) {
+    @Override
+    public boolean validateIsTrulyNew(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(PARTICIPANT.PARTICIPANT_TYPE.getName(), pojo.getParticipantType()),
                 entry(PARTICIPANT.NAME_FIRST.getName(), pojo.getNameFirst()),
@@ -58,6 +58,7 @@ public class ParticipantLogic extends Logic {
         return fetchByCriteria(criteria, 0, 1).size() > 0;
     }
 
+    @Override
     public Optional<Participant> fetchById(Long id) {
         return jooq
                 .selectFrom(PARTICIPANT)
@@ -65,6 +66,7 @@ public class ParticipantLogic extends Logic {
                 .fetchOptionalInto(Participant.class);
     }
 
+    @Override
     public List<Participant> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
         return jooq
                 .selectFrom(PARTICIPANT)
@@ -75,7 +77,8 @@ public class ParticipantLogic extends Logic {
                 .toList();
     }
 
-    public Optional<Long> insertNew(Participant pojo) {
+    @Override
+    public Optional<Long> insertNew(P pojo) {
         return jooq
                 .insertInto(PARTICIPANT)
                 .set(PARTICIPANT.PARTICIPANT_TYPE, pojo.getParticipantType())
@@ -94,7 +97,8 @@ public class ParticipantLogic extends Logic {
                 .map(ParticipantRecord::getId);
     }
 
-    public int updateExisting(Participant update) {
+    @Override
+    public int updateExisting(P update) {
         return jooq.update(PARTICIPANT)
                 .set(PARTICIPANT.PARTICIPANT_TYPE, update.getParticipantType())
                 .set(PARTICIPANT.NAME_FIRST, update.getNameFirst())

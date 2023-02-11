@@ -2,6 +2,7 @@ package net.briclabs.evcoordinator.controller.payment;
 
 import net.briclabs.evcoordinator.PaymentInfoLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.PaymentInfo;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,26 +25,29 @@ import java.util.Map;
 
 @RestController
 @RequestMapping(ApiController.V1 + "/payment/info")
-public class PaymentInfoController extends ApiController<PaymentInfoLogic> {
+public class PaymentInfoController<P extends PaymentInfo> extends ApiController<PaymentInfoLogic<P>> implements WriteController<P> {
 
     @Autowired
     public PaymentInfoController(DSLContext dslContext) {
-        super(dslContext, new PaymentInfoLogic(dslContext));
+        super(dslContext, new PaymentInfoLogic<>(dslContext));
     }
 
+    @Override
     @GetMapping(value = "/{id}")
     public PaymentInfo findById(@PathVariable("id") Long id) {
         return logic.fetchById(id).orElse(null);
     }
 
+    @Override
     @GetMapping(value = "/{offset}/{max}")
     public List<PaymentInfo> findByCriteria(@PathVariable("offset") int offset, @PathVariable("max") int max, @RequestParam Map<String, String> criteria) {
         return new ArrayList<>(logic.fetchByCriteria(criteria, offset, max));
     }
 
+    @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Long create(@RequestBody PaymentInfo paymentInfo) {
+    public Long create(@RequestBody P paymentInfo) throws HttpClientErrorException {
         if (logic.validateIsTrulyNew(paymentInfo)) {
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
         }
@@ -51,9 +55,10 @@ public class PaymentInfoController extends ApiController<PaymentInfoLogic> {
         return logic.insertNew(paymentInfo).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
+    @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public int update(@RequestBody PaymentInfo updatedPaymentInfo) {
+    public int update(@RequestBody P updatedPaymentInfo) {
         return logic.updateExisting(updatedPaymentInfo);
     }
 }

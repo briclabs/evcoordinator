@@ -5,7 +5,6 @@ import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,18 +14,18 @@ import java.util.Optional;
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.EventInfo.EVENT_INFO;
 
-public class EventInfoLogic extends Logic {
+public class EventInfoLogic<P extends EventInfo> extends Logic implements WriteLogic<P> {
 
     static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
         stripOutUnknownFields(searchCriteria, EVENT_INFO);
         List<Condition> matchConditions = new ArrayList<>();
         searchCriteria.forEach((key, value) -> {
-            buildPossibleCondition(EVENT_INFO.ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(EVENT_INFO.EVENT_STATUS, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(EVENT_INFO.EVENT_NAME, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(EVENT_INFO.EVENT_TITLE, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(EVENT_INFO.DATE_START, key, LocalDate.parse(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(EVENT_INFO.DATE_END, key, LocalDate.parse(value)).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.EVENT_STATUS, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.EVENT_NAME, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.EVENT_TITLE, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.DATE_START, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.DATE_END, key, value).ifPresent(matchConditions::add);
         });
         return matchConditions;
     }
@@ -35,7 +34,8 @@ public class EventInfoLogic extends Logic {
         super(jooq);
     }
 
-    public boolean validateIsTrulyNew(EventInfo pojo) {
+    @Override
+    public boolean validateIsTrulyNew(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(EVENT_INFO.EVENT_STATUS.getName(), pojo.getEventStatus()),
                 entry(EVENT_INFO.EVENT_NAME.getName(), pojo.getEventName()),
@@ -45,6 +45,7 @@ public class EventInfoLogic extends Logic {
         return fetchByCriteria(criteria, 0, 1).size() > 0;
     }
 
+    @Override
     public Optional<EventInfo> fetchById(Long id) {
         return jooq
                 .selectFrom(EVENT_INFO)
@@ -52,6 +53,7 @@ public class EventInfoLogic extends Logic {
                 .fetchOptionalInto(EventInfo.class);
     }
 
+    @Override
     public List<EventInfo> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
         return jooq
                 .selectFrom(EVENT_INFO)
@@ -62,7 +64,8 @@ public class EventInfoLogic extends Logic {
                 .toList();
     }
 
-    public Optional<Long> insertNew(EventInfo pojo) {
+    @Override
+    public Optional<Long> insertNew(P pojo) {
         return jooq
                 .insertInto(EVENT_INFO)
                 .set(EVENT_INFO.EVENT_STATUS, pojo.getEventStatus())
@@ -75,7 +78,8 @@ public class EventInfoLogic extends Logic {
                 .map(EventInfoRecord::getId);
     }
 
-    public int updateExisting(EventInfo update) {
+    @Override
+    public int updateExisting(P update) {
         return jooq
                 .update(EVENT_INFO)
                 .set(EVENT_INFO.EVENT_STATUS, update.getEventStatus())

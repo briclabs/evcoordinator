@@ -3,7 +3,7 @@ package net.briclabs.evcoordinator.controller;
 import net.briclabs.evcoordinator.Logic;
 import org.jooq.DSLContext;
 
-public abstract class ApiController<L extends Logic> {
+public abstract class ApiController<L extends Logic> implements ReadController {
 
     public static final String V1 = "v1";
 

@@ -14,16 +14,16 @@ import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.ParticipantAssociation.PARTICIPANT_ASSOCIATION;
 import static net.briclabs.evcoordinator.generated.tables.PaymentInfo.PAYMENT_INFO;
 
-public class ParticipantAssociationLogic extends Logic {
+public class ParticipantAssociationLogic<P extends ParticipantAssociation> extends Logic implements WriteLogic<P> {
 
     static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
         stripOutUnknownFields(searchCriteria, PAYMENT_INFO);
         List<Condition> matchConditions = new ArrayList<>();
         searchCriteria.forEach((key, value) -> {
-            buildPossibleCondition(PARTICIPANT_ASSOCIATION.ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT_ASSOCIATION.SELF, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT_ASSOCIATION.ASSOCIATE, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PARTICIPANT_ASSOCIATION.ASSOCIATION, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT_ASSOCIATION.ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT_ASSOCIATION.SELF, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT_ASSOCIATION.ASSOCIATE, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT_ASSOCIATION.ASSOCIATION, key, value).ifPresent(matchConditions::add);
         });
         return matchConditions;
     }
@@ -32,7 +32,8 @@ public class ParticipantAssociationLogic extends Logic {
         super(jooq);
     }
 
-    public boolean validateIsTrulyNew(ParticipantAssociation pojo) {
+    @Override
+    public boolean validateIsTrulyNew(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(PARTICIPANT_ASSOCIATION.SELF.getName(), Long.toString(pojo.getSelf())),
                 entry(PARTICIPANT_ASSOCIATION.ASSOCIATE.getName(), Long.toString(pojo.getAssociate())),
@@ -40,6 +41,7 @@ public class ParticipantAssociationLogic extends Logic {
         return fetchByCriteria(criteria, 0, 1).size() > 0;
     }
 
+    @Override
     public Optional<ParticipantAssociation> fetchById(Long id) {
         return jooq
                 .selectFrom(PARTICIPANT_ASSOCIATION)
@@ -47,6 +49,7 @@ public class ParticipantAssociationLogic extends Logic {
                 .fetchOptionalInto(ParticipantAssociation.class);
     }
 
+    @Override
     public List<ParticipantAssociation> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
         return jooq
                 .selectFrom(PARTICIPANT_ASSOCIATION)
@@ -57,7 +60,8 @@ public class ParticipantAssociationLogic extends Logic {
                 .toList();
     }
 
-    public Optional<Long> insertNew(ParticipantAssociation pojo) {
+    @Override
+    public Optional<Long> insertNew(P pojo) {
         return jooq
                 .insertInto(PARTICIPANT_ASSOCIATION)
                 .set(PARTICIPANT_ASSOCIATION.SELF, pojo.getSelf())
@@ -68,7 +72,8 @@ public class ParticipantAssociationLogic extends Logic {
                 .map(ParticipantAssociationRecord::getId);
     }
 
-    public int updateExisting(ParticipantAssociation update) {
+    @Override
+    public int updateExisting(P update) {
         return jooq
                 .update(PARTICIPANT_ASSOCIATION)
                 .set(PARTICIPANT_ASSOCIATION.SELF, update.getSelf())

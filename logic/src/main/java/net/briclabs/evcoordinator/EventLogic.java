@@ -13,16 +13,16 @@ import java.util.Optional;
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.Event.EVENT;
 
-public class EventLogic extends Logic {
+public class EventLogic<P extends Event> extends Logic implements WriteLogic<P> {
 
     static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
         stripOutUnknownFields(searchCriteria, EVENT);
         List<Condition> matchConditions = new ArrayList<>();
         searchCriteria.forEach((key, value) -> {
-            buildPossibleCondition(EVENT.ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(EVENT.EVENT_ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(EVENT.PARTICIPANT_ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(EVENT.ACTION_TYPE, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT.ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT.EVENT_ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT.PARTICIPANT_ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT.ACTION_TYPE, key, value).ifPresent(matchConditions::add);
         });
         return matchConditions;
     }
@@ -31,7 +31,8 @@ public class EventLogic extends Logic {
         super(jooq);
     }
 
-    public boolean validateIsTrulyNew(Event pojo) {
+    @Override
+    public boolean validateIsTrulyNew(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(EVENT.EVENT_ID.getName(), Long.toString(pojo.getEventId())),
                 entry(EVENT.ACTION_TYPE.getName(), pojo.getActionType()),
@@ -39,6 +40,7 @@ public class EventLogic extends Logic {
         return fetchByCriteria(criteria, 0, 1).size() > 0;
     }
 
+    @Override
     public Optional<Event> fetchById(Long id) {
         return jooq
                 .select()
@@ -47,6 +49,7 @@ public class EventLogic extends Logic {
                 .fetchOptionalInto(Event.class);
     }
 
+    @Override
     public List<Event> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
         return jooq
                 .selectFrom(EVENT)
@@ -57,7 +60,8 @@ public class EventLogic extends Logic {
                 .toList();
     }
 
-    public Optional<Long> insertNew(Event pojo) {
+    @Override
+    public Optional<Long> insertNew(P pojo) {
         return jooq
                 .insertInto(EVENT)
                 .set(EVENT.EVENT_ID, pojo.getEventId())
@@ -68,7 +72,8 @@ public class EventLogic extends Logic {
                 .map(EventRecord::getId);
     }
 
-    public int updateExisting(Event update) {
+    @Override
+    public int updateExisting(P update) {
         return jooq
                 .update(EVENT)
                 .set(EVENT.EVENT_ID, update.getEventId())

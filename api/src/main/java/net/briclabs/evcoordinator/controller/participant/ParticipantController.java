@@ -2,6 +2,7 @@ package net.briclabs.evcoordinator.controller.participant;
 
 import net.briclabs.evcoordinator.ParticipantLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,26 +25,29 @@ import java.util.Map;
 
 @RestController
 @RequestMapping(ApiController.V1 + "/participant")
-public class ParticipantController extends ApiController<ParticipantLogic> {
+public class ParticipantController<P extends Participant> extends ApiController<ParticipantLogic<P>> implements WriteController<P> {
 
     @Autowired
     public ParticipantController(DSLContext dslContext) {
-        super(dslContext, new ParticipantLogic(dslContext));
+        super(dslContext, new ParticipantLogic<>(dslContext));
     }
 
+    @Override
     @GetMapping(value = "/{id}")
     public Participant findById(@PathVariable("id") Long id) {
         return logic.fetchById(id).orElse(null);
     }
 
+    @Override
     @GetMapping(value = "/{offset}/{max}")
     public List<Participant> findByCriteria(@PathVariable("offset") int offset, @PathVariable("max") int max, @RequestParam Map<String, String> criteria) {
         return new ArrayList<>(logic.fetchByCriteria(criteria, offset, max));
     }
 
+    @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Long create(@RequestBody Participant participant) {
+    public Long create(@RequestBody P participant) throws HttpClientErrorException {
         if (logic.validateIsTrulyNew(participant)) {
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
         }
@@ -51,9 +55,10 @@ public class ParticipantController extends ApiController<ParticipantLogic> {
         return logic.insertNew(participant).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
+    @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public int update(@RequestBody Participant updatedParticipant) {
+    public int update(@RequestBody P updatedParticipant) {
         return logic.updateExisting(updatedParticipant);
     }
 }

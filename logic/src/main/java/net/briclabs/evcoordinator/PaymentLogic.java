@@ -14,18 +14,18 @@ import java.util.Optional;
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.Payment.PAYMENT;
 
-public class PaymentLogic extends Logic {
+public class PaymentLogic<P extends Payment> extends Logic implements WriteLogic<P> {
 
     static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
         stripOutUnknownFields(searchCriteria, PAYMENT);
         List<Condition> matchConditions = new ArrayList<>();
         searchCriteria.forEach((key, value) -> {
-            buildPossibleCondition(PAYMENT.ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PAYMENT.PAYMENT_ACTION_TYPE, key, value).ifPresent(matchConditions::add);
-            buildPossibleCondition(PAYMENT.ACTOR_ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PAYMENT.PAYMENT_ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PAYMENT.RECIPIENT_ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
-            buildPossibleCondition(PAYMENT.EVENT_ID, key, Long.parseLong(value)).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.ID, key, value);
+            addPossibleCondition(PAYMENT.PAYMENT_ACTION_TYPE, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.ACTOR_ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.PAYMENT_ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.RECIPIENT_ID, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.EVENT_ID, key, value).ifPresent(matchConditions::add);
         });
         return matchConditions;
     }
@@ -34,7 +34,8 @@ public class PaymentLogic extends Logic {
         super(jooq);
     }
 
-    public boolean validateIsTrulyNew(Payment pojo) {
+    @Override
+    public boolean validateIsTrulyNew(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(PAYMENT.PAYMENT_ACTION_TYPE.getName(), pojo.getPaymentActionType()),
                 entry(PAYMENT.ACTOR_ID.getName(), Long.toString(pojo.getActorId())),
@@ -44,6 +45,7 @@ public class PaymentLogic extends Logic {
         return fetchByCriteria(criteria, 0, 1).size() > 0;
     }
 
+    @Override
     public Optional<Payment> fetchById(Long id) {
         return jooq
                 .selectFrom(PAYMENT)
@@ -51,6 +53,7 @@ public class PaymentLogic extends Logic {
                 .fetchOptionalInto(Payment.class);
     }
 
+    @Override
     public List<Payment> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
         return jooq
                 .selectFrom(PAYMENT)
@@ -61,7 +64,8 @@ public class PaymentLogic extends Logic {
                 .toList();
     }
 
-    public Optional<Long> insertNew(Payment pojo) {
+    @Override
+    public Optional<Long> insertNew(P pojo) {
         return jooq
                 .insertInto(PAYMENT)
                 .set(PAYMENT.PAYMENT_ACTION_TYPE, pojo.getPaymentActionType())
@@ -74,7 +78,8 @@ public class PaymentLogic extends Logic {
                 .map(PaymentRecord::getId);
     }
 
-    public int updateExisting(Payment update) {
+    @Override
+    public int updateExisting(P update) {
         return jooq
                 .update(PAYMENT)
                 .set(PAYMENT.PAYMENT_ACTION_TYPE, update.getPaymentActionType())

@@ -27,11 +27,13 @@ public class HistoryController extends ApiController<HistoryLogic> {
         super(dslContext, new HistoryLogic(dslContext));
     }
 
+    @Override
     @GetMapping(value = "/{id}")
     public DataHistory findById(@PathVariable("id") Long id) {
         return logic.fetchById(id).orElse(null);
     }
 
+    @Override
     @GetMapping(value = "/{offset}/{max}")
     public List<DataHistory> findByCriteria(@PathVariable("offset") int offset, @PathVariable("max") int max, @RequestParam Map<String, String> criteria) {
         return new ArrayList<>(logic.fetchByCriteria(criteria, offset, max));
