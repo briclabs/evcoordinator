@@ -3,17 +3,17 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'org.yaml:snakeyaml:1.33'
-        classpath 'org.liquibase:liquibase-core:4.9.1'
-        classpath 'org.liquibase:liquibase-gradle-plugin:2.1.1'
-        classpath 'org.jooq:jooq-codegen:3.17.7'
-        classpath 'org.jooq:jooq-meta-extensions-liquibase:3.17.7'
+        classpath 'org.yaml:snakeyaml:2.2'
+        classpath 'org.liquibase:liquibase-core:4.28.0'
+        classpath 'org.liquibase:liquibase-gradle-plugin:2.2.2'
+        classpath 'org.jooq:jooq-codegen:3.19.10'
+        classpath 'org.jooq:jooq-meta-extensions-liquibase:3.19.10'
     }
 }
 
 plugins {
-    id 'io.spring.dependency-management' version '1.1.0'
-    id 'nu.studer.jooq' version '8.1'
+    id 'io.spring.dependency-management' version '1.1.5'
+    id 'nu.studer.jooq' version '9.0'
     id 'java-library'
     id 'idea'
 }
@@ -21,7 +21,7 @@ plugins {
 apply plugin: 'java-library'
 apply plugin: 'idea'
 apply plugin: 'io.spring.dependency-management'
-apply plugin: 'liquibase'
+apply plugin: 'org.liquibase.gradle'
 
 group 'org.briclabs'
 version '1.0'
@@ -31,25 +31,25 @@ repositories {
 }
 
 dependencies {
-    api 'org.jooq:jooq:3.17.7'
+    api 'org.jooq:jooq:3.19.10'
 
-    implementation 'org.springframework.boot:spring-boot-gradle-plugin:3.0.1'
-    implementation 'org.springframework.boot:spring-boot-starter-jdbc:3.0.1'
-    implementation 'org.springframework.boot:spring-boot-starter-jooq:3.0.1'
-    implementation 'org.jooq:jooq-meta-extensions-liquibase:3.17.4'
-    implementation 'org.liquibase:liquibase-gradle-plugin:2.1.1'
-    implementation 'org.liquibase:liquibase-core:4.9.1'
-    implementation 'org.postgresql:postgresql:42.5.1'
-    implementation 'org.jooq:jooq-meta:3.17.7'
-    implementation 'org.jooq:jooq-codegen:3.17.7'
+    implementation 'org.springframework.boot:spring-boot-gradle-plugin:3.3.0'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc:3.3.0'
+    implementation 'org.springframework.boot:spring-boot-starter-jooq:3.3.0'
+    implementation 'org.jooq:jooq-meta-extensions-liquibase:3.19.10'
+    implementation 'org.liquibase:liquibase-gradle-plugin:2.2.2'
+    implementation 'org.liquibase:liquibase-core:4.28.0'
+    implementation 'org.postgresql:postgresql:42.7.3'
+    implementation 'org.jooq:jooq-meta:3.19.10'
+    implementation 'org.jooq:jooq-codegen:3.19.10'
 
-    jooqGenerator 'org.postgresql:postgresql:42.5.1'
-    jooqGenerator 'org.liquibase:liquibase-core:4.9.1'
-    jooqGenerator 'org.jooq:jooq-meta-extensions-liquibase:3.17.7'
-    jooqGenerator 'org.springframework.boot:spring-boot-starter-jdbc:3.0.1'
+    jooqGenerator 'org.postgresql:postgresql:42.7.3'
+    jooqGenerator 'org.liquibase:liquibase-core:4.28.0'
+    jooqGenerator 'org.jooq:jooq-meta-extensions-liquibase:3.19.10'
+    jooqGenerator 'org.springframework.boot:spring-boot-starter-jdbc:3.3.0'
     jooqGenerator(files("src/main/resources"))
 
-    testImplementation 'org.testng:testng:7.7.0'
+    testImplementation 'org.testng:testng:7.10.2'
 }
 
 tasks.named('test') {
