@@ -1,7 +1,6 @@
 package net.briclabs.evcoordinator;
 
 import org.jooq.conf.RenderQuotedNames;
-import org.keycloak.adapters.springsecurity.authentication.KeycloakLogoutHandler;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.jooq.DefaultConfigurationCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -67,10 +66,10 @@ public class ApiConfig {
     @Bean
     public SecurityFilterChain resourceServerFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers(new AntPathRequestMatcher("/customers*", HttpMethod.OPTIONS.name()))
+                .requestMatchers(new AntPathRequestMatcher("/tools*", HttpMethod.OPTIONS.name()))
                 .permitAll()
-                .requestMatchers(new AntPathRequestMatcher("/customers*"))
-                .hasRole("user")
+                .requestMatchers(new AntPathRequestMatcher("/tools*"))
+                .hasRole("admin")
                 .requestMatchers(new AntPathRequestMatcher("/"))
                 .permitAll()
                 .anyRequest()
@@ -116,6 +115,7 @@ public class ApiConfig {
         };
     }
 
+    @Bean
     Collection<GrantedAuthority> generateAuthoritiesFromClaim(Collection<String> roles) {
         return roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).collect(
                 Collectors.toList());

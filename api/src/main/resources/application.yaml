@@ -19,11 +19,11 @@ spring:
               - openid
         provider:
           keycloak:
-            issuer-uri: http://localhost:8080/realms/evcoordinator
+            issuer-uri: http://0.0.0.0:8080/realms/evcoordinator
             user-name-attribute: preferred_username
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/evcoordinator
+          issuer-uri: http://0.0.0.0:8080/realms/evcoordinator
 springdoc:
   swagger-ui:
     path: /api-docs
