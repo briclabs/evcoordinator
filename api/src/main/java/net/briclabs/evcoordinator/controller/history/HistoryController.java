@@ -5,6 +5,7 @@ import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@Validated
 @RequestMapping(ApiController.V1 + "/history")
 public class HistoryController extends ApiController<HistoryLogic> {
 // TODO this should only have objects created via TRIGGER...

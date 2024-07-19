@@ -7,6 +7,7 @@ import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +25,7 @@ import java.util.Map;
 
 
 @RestController
+@Validated
 @RequestMapping(ApiController.V1 + "/event/info")
 public class EventInfoController<P extends EventInfo> extends ApiController<EventInfoLogic<P>> implements WriteController<P> {
 

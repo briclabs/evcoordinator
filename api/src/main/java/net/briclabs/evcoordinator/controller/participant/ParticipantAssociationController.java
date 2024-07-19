@@ -7,6 +7,7 @@ import net.briclabs.evcoordinator.generated.tables.pojos.ParticipantAssociation;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,6 +25,7 @@ import java.util.Map;
 
 
 @RestController
+@Validated
 @RequestMapping(ApiController.V1 + "/participant/assoc")
 public class ParticipantAssociationController<P extends ParticipantAssociation> extends ApiController<ParticipantAssociationLogic<P>> implements WriteController<P> {
 
