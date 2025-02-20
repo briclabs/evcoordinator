@@ -1,0 +1,14 @@
+{
+  "instructions": [
+    "bullet1",
+    "bullet2"
+  ],
+  "donationAddress": {
+    "to": "My Name",
+    "co": "Care Of",
+    "street": "1 Street",
+    "city": "City Name",
+    "state": "CT",
+    "zip": "06478"
+  }
+}

@@ -2,6 +2,8 @@ package net.briclabs.evcoordinator;
 
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.JSON;
+import org.jooq.JSONB;
 import org.jooq.TableField;
 import org.jooq.UpdatableRecord;
 import org.jooq.impl.TableImpl;
@@ -42,7 +44,21 @@ public abstract class Logic implements ReadLogic {
      */
     static <T, R extends UpdatableRecord<R>> Optional<Condition> addPossibleCondition(TableField<R, T> field, String key, String value) {
         return field.getName().equalsIgnoreCase(key)
-                ? Optional.of(field.eq(field.getDataType().convert(value)))
+                ? Optional.of(getEqWithJsonBHandling(field, value))
                 : Optional.empty();
+    }
+
+    /**
+     * You cannot do an {@link Condition#eq(Object)} on a {@link JSON} object. You have to cast it to {@link JSONB} first.
+     * @param field the field being updated.
+     * @param value the value of the update.
+     * @return the updatable record.
+     * @param <T> the type of the table field.
+     * @param <R> the type of the record.
+     */
+    private static <T, R extends UpdatableRecord<R>> Condition getEqWithJsonBHandling(TableField<R, T> field, String value) {
+        return field.getDataType().getType().equals(JSON.class)
+                ? field.cast(JSONB.class).eq(JSONB.valueOf(value))
+                : field.eq(field.getDataType().convert(value));
     }
 }

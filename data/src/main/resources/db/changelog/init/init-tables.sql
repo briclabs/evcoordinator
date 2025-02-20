@@ -28,6 +28,17 @@ INSERT INTO payment_type (payment_type) VALUES ('EXPENSE'), ('INCOME');
 CREATE TABLE IF NOT EXISTS payment_action ( payment_action_type text PRIMARY KEY );
 INSERT INTO payment_action (payment_action_type) VALUES ('SENT'), ('REFUNDED');
 
+CREATE TABLE IF NOT EXISTS configuration (
+   id bigint GENERATED ALWAYS AS IDENTITY,
+   recommended_donation int NOT NULL,
+   charity_name character varying NOT NULL,
+   charity_url character varying NOT NULL,
+   fund_processor_name character varying NOT NULL,
+   fund_processor_url character varying NOT NULL,
+   fund_processor_instructions json NOT NULL,
+   event_guidelines json NOT NULL,
+   PRIMARY KEY (id) );
+
 CREATE TABLE IF NOT EXISTS participant (
    id bigint GENERATED ALWAYS AS IDENTITY,
    participant_type text REFERENCES participant_type(participant_type) NOT NULL,

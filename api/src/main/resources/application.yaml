@@ -12,21 +12,37 @@ spring:
     oauth2:
       client:
         registration:
-          keycloak:
+          authentik:
+            client-name: evcoordinator
             client-id: evcoordinator
+            client-authentication-method: private_key_jwt
+            client-secret: p0hAGEFsiBYZXYaoqhUR2KF0jZ1tpB6lt9d90QDHoXO6GcoGufPDmXDk2zGXiv7n5MXaJvl9rq0NPwYzu1zUDCEddjxoQYppwqMaUQIDXmqrY0lpzUZ6Rsy88OyAoou2
             authorization-grant-type: authorization_code
+            redirect-uri: http://localhost:8080/login/oauth2/code/evcoordinator/
             scope:
               - openid
+            provider: authentik
         provider:
-          keycloak:
-            issuer-uri: http://0.0.0.0:8080/realms/evcoordinator
-            user-name-attribute: preferred_username
+          authentik:
+            issuer-uri: http://bricthentic-server-1:9000/application/o/evcoordinator/
+            token-uri: http://bricthentic-server-1:9000/application/o/token/
+            authorization-uri: http://localhost:9000/application/o/authorize/
+            user-info-uri: http://bricthentic-server-1:9000/application/o/userinfo/
+            user-name-attribute: name
       resourceserver:
+        opaquetoken:
+          introspection-uri: http://bricthentic-server-1:9000/application/o/evcoordinator/jwks/
+          client-id: evcoordinator
+          client-secret: p0hAGEFsiBYZXYaoqhUR2KF0jZ1tpB6lt9d90QDHoXO6GcoGufPDmXDk2zGXiv7n5MXaJvl9rq0NPwYzu1zUDCEddjxoQYppwqMaUQIDXmqrY0lpzUZ6Rsy88OyAoou2
         jwt:
-          issuer-uri: http://0.0.0.0:8080/realms/evcoordinator
+          ## This must match what's in the token exactly.
+          issuer-uri: http://localhost:9000/application/o/evcoordinator/
+          ## This must be reachable in order to validate tokens.
+          jwk-set-uri: http://bricthentic-server-1:9000/application/o/evcoordinator/jwks/
 springdoc:
   swagger-ui:
     path: /api-docs
 logging:
   level:
     root: info
+    org.springframework.security: TRACE

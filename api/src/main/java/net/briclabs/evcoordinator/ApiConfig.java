@@ -5,28 +5,21 @@ import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.jooq.DefaultConfigurationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
 import org.springframework.security.core.session.SessionRegistry;
 import org.springframework.security.core.session.SessionRegistryImpl;
-import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
-import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @SpringBootConfiguration
 @EnableWebSecurity
@@ -59,22 +52,37 @@ public class ApiConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests((requests) -> requests
-                .requestMatchers("/").permitAll()
-                .requestMatchers("/tools").hasRole("admin")
-                .anyRequest().authenticated()
-            )
-            .formLogin((form) -> form
-                .loginPage("/login")
-                .permitAll()
-            )
-            .logout((logout) -> logout.permitAll());
+                .authorizeHttpRequests(authorizeHttpRequests -> authorizeHttpRequests
+                        .requestMatchers("/v1/configuration/latest").permitAll()
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(httpSecurityOAuth2ResourceServerConfigurer -> httpSecurityOAuth2ResourceServerConfigurer
+                        .jwt(Customizer.withDefaults()))
+                .cors(Customizer.withDefaults())
+                .csrf((csrf) -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
         return http.build();
     }
 
     @Bean
-    Collection<GrantedAuthority> generateAuthoritiesFromClaim(Collection<String> roles) {
-        return roles.stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role)).collect(
-                Collectors.toList());
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
+        authoritiesConverter.setAuthorityPrefix("");
+        authoritiesConverter.setAuthoritiesClaimName("groups");
+
+        JwtAuthenticationConverter authenticationConverter = new JwtAuthenticationConverter();
+        authenticationConverter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+
+        return authenticationConverter;
+    }
+
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
+        config.addAllowedOriginPattern("http://localhost:[8080,4200]");
+        config.setAllowCredentials(true);
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }
