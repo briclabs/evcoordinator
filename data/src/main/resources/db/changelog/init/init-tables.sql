@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS participant (
    participant_type text REFERENCES participant_type(participant_type) NOT NULL,
    name_first character varying NOT NULL,
    name_last character varying NOT NULL,
+   name_nick character varying,
+   sponsor character varying NOT NULL,
    dob date NOT NULL,
    addr_street_1 character varying NOT NULL,
    addr_street_2 character varying,

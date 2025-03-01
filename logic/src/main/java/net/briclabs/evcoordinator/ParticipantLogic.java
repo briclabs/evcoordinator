@@ -23,8 +23,10 @@ public class ParticipantLogic<P extends Participant> extends Logic implements Wr
         searchCriteria.forEach((key, value) -> {
             addPossibleCondition(PARTICIPANT.ID, key, value);
             addPossibleCondition(PARTICIPANT.PARTICIPANT_TYPE, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.SPONSOR, key, value).ifPresent(matchConditions::add);
             addPossibleCondition(PARTICIPANT.NAME_FIRST, key, value).ifPresent(matchConditions::add);
             addPossibleCondition(PARTICIPANT.NAME_LAST, key, value).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.NAME_NICK, key, value).ifPresent(matchConditions::add);
             addPossibleCondition(PARTICIPANT.DOB, key, value).ifPresent(matchConditions::add);
             addPossibleCondition(PARTICIPANT.ADDR_STREET_1, key, value).ifPresent(matchConditions::add);
             addPossibleCondition(PARTICIPANT.ADDR_STREET_2, key, value).ifPresent(matchConditions::add);
@@ -45,8 +47,10 @@ public class ParticipantLogic<P extends Participant> extends Logic implements Wr
     public boolean validateIsTrulyNew(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(PARTICIPANT.PARTICIPANT_TYPE.getName(), pojo.getParticipantType()),
+                entry(PARTICIPANT.SPONSOR.getName(), pojo.getParticipantType()),
                 entry(PARTICIPANT.NAME_FIRST.getName(), pojo.getNameFirst()),
                 entry(PARTICIPANT.NAME_LAST.getName(), pojo.getNameLast()),
+                entry(PARTICIPANT.NAME_NICK.getName(), pojo.getNameNick()),
                 entry(PARTICIPANT.DOB.getName(), pojo.getDob().format(DateTimeFormatter.ISO_DATE)),
                 entry(PARTICIPANT.ADDR_STREET_1.getName(), pojo.getAddrStreet_1()),
                 entry(PARTICIPANT.ADDR_STREET_2.getName(), StringUtils.defaultString(pojo.getAddrStreet_2(), "")),
@@ -82,8 +86,10 @@ public class ParticipantLogic<P extends Participant> extends Logic implements Wr
         return jooq
                 .insertInto(PARTICIPANT)
                 .set(PARTICIPANT.PARTICIPANT_TYPE, pojo.getParticipantType())
+                .set(PARTICIPANT.SPONSOR, pojo.getSponsor())
                 .set(PARTICIPANT.NAME_FIRST, pojo.getNameFirst())
                 .set(PARTICIPANT.NAME_LAST, pojo.getNameLast())
+                .set(PARTICIPANT.NAME_NICK, pojo.getNameNick())
                 .set(PARTICIPANT.DOB, pojo.getDob())
                 .set(PARTICIPANT.ADDR_STREET_1, pojo.getAddrStreet_1())
                 .set(PARTICIPANT.ADDR_STREET_2, pojo.getAddrStreet_2())
@@ -101,8 +107,10 @@ public class ParticipantLogic<P extends Participant> extends Logic implements Wr
     public int updateExisting(P update) {
         return jooq.update(PARTICIPANT)
                 .set(PARTICIPANT.PARTICIPANT_TYPE, update.getParticipantType())
+                .set(PARTICIPANT.SPONSOR, update.getSponsor())
                 .set(PARTICIPANT.NAME_FIRST, update.getNameFirst())
                 .set(PARTICIPANT.NAME_LAST, update.getNameLast())
+                .set(PARTICIPANT.NAME_NICK, update.getNameNick())
                 .set(PARTICIPANT.DOB, update.getDob())
                 .set(PARTICIPANT.ADDR_STREET_1, update.getAddrStreet_1())
                 .set(PARTICIPANT.ADDR_STREET_2, update.getAddrStreet_2())
@@ -114,8 +122,10 @@ public class ParticipantLogic<P extends Participant> extends Logic implements Wr
                 .where(PARTICIPANT.ID.eq(update.getId()))
                 .and(
                         PARTICIPANT.PARTICIPANT_TYPE.notEqual(update.getParticipantType())
+                        .or(PARTICIPANT.SPONSOR.notEqual(update.getSponsor()))
                         .or(PARTICIPANT.NAME_FIRST.notEqual(update.getNameFirst()))
                         .or(PARTICIPANT.NAME_LAST.notEqual(update.getNameLast()))
+                        .or(PARTICIPANT.NAME_NICK.notEqual(update.getNameNick()))
                         .or(PARTICIPANT.DOB.notEqual(update.getDob()))
                         .or(PARTICIPANT.ADDR_STREET_1.notEqual(update.getAddrStreet_1()))
                         .or(PARTICIPANT.ADDR_STREET_2.notEqual(update.getAddrStreet_2()))

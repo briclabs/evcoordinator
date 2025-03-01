@@ -33,6 +33,7 @@ repositories {
 dependencies {
     api libs.jooq
 
+    implementation libs.jacksonDatatype
     implementation libs.springBootGradle
     implementation libs.springBootStarterJdbc
     implementation libs.springBootStarterJooq
