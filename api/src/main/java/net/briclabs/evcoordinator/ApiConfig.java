@@ -1,6 +1,7 @@
 package net.briclabs.evcoordinator;
 
 import org.jooq.conf.RenderQuotedNames;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.boot.autoconfigure.jooq.DefaultConfigurationCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -75,12 +76,12 @@ public class ApiConfig {
     }
 
     @Bean
-    CorsConfigurationSource corsConfigurationSource() {
+    CorsConfigurationSource corsConfigurationSource(@Value("${app.cors.origins}") String corsOrigins) {
         final UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.addAllowedHeader("*");
         config.addAllowedMethod("*");
-        config.addAllowedOriginPattern("http://localhost:[8080,4200]");
+        config.addAllowedOriginPattern(corsOrigins);
         config.setAllowCredentials(true);
         source.registerCorsConfiguration("/**", config);
         return source;

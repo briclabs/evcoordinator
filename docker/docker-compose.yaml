@@ -13,6 +13,8 @@ services:
     networks:
       - bricthentic_default
       - evcoordinator_default
+    env_file:
+      - .env
 
   db:
     container_name: evcoordinator-db
@@ -22,10 +24,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    environment:
-      - POSTGRES_DB=evcoordinator
-      - POSTGRES_USER=postgres-user
-      - POSTGRES_PASSWORD=postgres-pass
 # Uncomment this to allow for direct DB access.
 #    ports:
 #      - "5432:5432"
@@ -33,6 +31,8 @@ services:
       - 5432
     networks:
       - evcoordinator_default
+    env_file:
+      - .env
 
 networks:
   bricthentic_default:

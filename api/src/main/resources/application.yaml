@@ -1,9 +1,9 @@
 spring:
   datasource:
-    url: jdbc:postgresql://db:5432/evcoordinator
+    url: ${POSTGRES_URL:jdbc:postgresql://db:5432/evcoordinator}
     driverClassName: org.postgresql.Driver
-    username: postgres-user
-    password: postgres-pass
+    username: ${POSTGRES_USER:postgres-user}
+    password: ${POSTGRES_PASSWORD:postgres-pass}
   liquibase:
     drop-first: true
   jooq:
@@ -13,36 +13,37 @@ spring:
       client:
         registration:
           authentik:
-            client-name: evcoordinator
-            client-id: evcoordinator
-            client-authentication-method: private_key_jwt
-            client-secret: p0hAGEFsiBYZXYaoqhUR2KF0jZ1tpB6lt9d90QDHoXO6GcoGufPDmXDk2zGXiv7n5MXaJvl9rq0NPwYzu1zUDCEddjxoQYppwqMaUQIDXmqrY0lpzUZ6Rsy88OyAoou2
-            authorization-grant-type: authorization_code
-            redirect-uri: http://localhost:8080/login/oauth2/code/evcoordinator/
+            client-name: ${OAUTH2_CLIENT_NAME:evcoordinator}
+            client-id: ${OAUTH2_CLIENT_ID:evcoordinator}
+            client-authentication-method: ${OAUTH2_CLIENT_AUTH_METHOD:private_key_jwt}
+            client-secret: ${OAUTH2_CLIENT_SECRET:p0hAGEFsiBYZXYaoqhUR2KF0jZ1tpB6lt9d90QDHoXO6GcoGufPDmXDk2zGXiv7n5MXaJvl9rq0NPwYzu1zUDCEddjxoQYppwqMaUQIDXmqrY0lpzUZ6Rsy88OyAoou2}
+            authorization-grant-type: ${OAUTH2_AUTH_GRANT_TYPE:authorization_code}
+            redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:8080/login/oauth2/code/evcoordinator/}
             scope:
               - openid
             provider: authentik
         provider:
           authentik:
-            issuer-uri: http://bricthentic-server-1:9000/application/o/evcoordinator/
-            token-uri: http://bricthentic-server-1:9000/application/o/token/
-            authorization-uri: http://localhost:9000/application/o/authorize/
-            user-info-uri: http://bricthentic-server-1:9000/application/o/userinfo/
-            user-name-attribute: name
+            issuer-uri: ${OAUTH2_ISSUER_URI:http://bricthentic-server-1:9000/application/o/evcoordinator/}
+            token-uri: ${OAUTH2_TOKEN_URI:http://bricthentic-server-1:9000/application/o/token/}
+            authorization-uri: ${OAUTH2_AUTHORIZATION_URI:http://localhost:9000/application/o/authorize/}
+            user-info-uri: ${OAUTH2_USER_INFO_URI:http://bricthentic-server-1:9000/application/o/userinfo/}
+            user-name-attribute: ${OAUTH2_USER_NAME_ATTRIBUTE:name}
       resourceserver:
         opaquetoken:
-          introspection-uri: http://bricthentic-server-1:9000/application/o/evcoordinator/jwks/
-          client-id: evcoordinator
-          client-secret: p0hAGEFsiBYZXYaoqhUR2KF0jZ1tpB6lt9d90QDHoXO6GcoGufPDmXDk2zGXiv7n5MXaJvl9rq0NPwYzu1zUDCEddjxoQYppwqMaUQIDXmqrY0lpzUZ6Rsy88OyAoou2
+          introspection-uri: ${OAUTH2_INTROSPECTION_URI:http://bricthentic-server-1:9000/application/o/evcoordinator/jwks/}
+          client-id: ${OAUTH2_CLIENT_ID:evcoordinator}
+          client-secret: ${OAUTH2_CLIENT_SECRET:p0hAGEFsiBYZXYaoqhUR2KF0jZ1tpB6lt9d90QDHoXO6GcoGufPDmXDk2zGXiv7n5MXaJvl9rq0NPwYzu1zUDCEddjxoQYppwqMaUQIDXmqrY0lpzUZ6Rsy88OyAoou2}
         jwt:
-          ## This must match what's in the token exactly.
-          issuer-uri: http://localhost:9000/application/o/evcoordinator/
-          ## This must be reachable in order to validate tokens.
-          jwk-set-uri: http://bricthentic-server-1:9000/application/o/evcoordinator/jwks/
+          issuer-uri: ${OAUTH2_JWT_ISSUER_URI:http://localhost:9000/application/o/evcoordinator/}
+          jwk-set-uri: ${OAUTH2_JWT_JWK_SET_URI:http://bricthentic-server-1:9000/application/o/evcoordinator/jwks/}
 springdoc:
   swagger-ui:
-    path: /api-docs
+    path: ${SWAGGER_UI_PATH:/api-docs}
 logging:
   level:
-    root: info
-    org.springframework.security: TRACE
+    root: ${LOGGING_LEVEL_ROOT:info}
+    org.springframework.security: ${LOGGING_LEVEL_SECURITY:TRACE}
+app:
+  cors:
+    origins: ${CORS_ORIGINS:http://localhost:4200}

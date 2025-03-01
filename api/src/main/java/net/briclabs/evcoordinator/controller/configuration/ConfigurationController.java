@@ -30,7 +30,7 @@ import java.util.Map;
 
 @RestController
 @CrossOrigin(
-        origins = "Http://localhost:4200",
+        origins = "${app.cors.origins}",
         allowedHeaders = "*",
         methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT }
 )
