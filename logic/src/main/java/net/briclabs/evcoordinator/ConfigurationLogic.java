@@ -4,6 +4,7 @@ import net.briclabs.evcoordinator.generated.tables.pojos.Configuration;
 import net.briclabs.evcoordinator.generated.tables.records.ConfigurationRecord;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.JSONB;
 
 import java.util.ArrayList;
@@ -16,24 +17,34 @@ import static net.briclabs.evcoordinator.generated.tables.Configuration.CONFIGUR
 
 public class ConfigurationLogic<P extends Configuration> extends Logic implements WriteLogic<P>  {
 
-    static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
-        stripOutUnknownFields(searchCriteria, CONFIGURATION);
-        List<Condition> matchConditions = new ArrayList<>();
-        searchCriteria.forEach((key, value) -> {
-            addPossibleCondition(CONFIGURATION.ID, key, value);
-            addPossibleCondition(CONFIGURATION.CHARITY_NAME, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(CONFIGURATION.CHARITY_URL, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(CONFIGURATION.EVENT_GUIDELINES, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(CONFIGURATION.FUND_PROCESSOR_INSTRUCTIONS, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(CONFIGURATION.FUND_PROCESSOR_NAME, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(CONFIGURATION.FUND_PROCESSOR_URL, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(CONFIGURATION.RECOMMENDED_DONATION, key, value).ifPresent(matchConditions::add);
-        });
-        return matchConditions;
-    }
+    private static final Map<String, Field<?>> FIELDS = Map.ofEntries(
+            Map.entry("ID", CONFIGURATION.ID),
+            Map.entry("RECOMMENDED_DONATION", CONFIGURATION.RECOMMENDED_DONATION),
+            Map.entry("CHARITY_NAME", CONFIGURATION.CHARITY_NAME),
+            Map.entry("CHARITY_URL", CONFIGURATION.CHARITY_URL),
+            Map.entry("FUND_PROCESSOR_NAME", CONFIGURATION.FUND_PROCESSOR_NAME),
+            Map.entry("FUND_PROCESSOR_URL", CONFIGURATION.FUND_PROCESSOR_URL),
+            Map.entry("FUND_PROCESSOR_INSTRUCTIONS", CONFIGURATION.FUND_PROCESSOR_INSTRUCTIONS),
+            Map.entry("EVENT_GUIDELINES", CONFIGURATION.EVENT_GUIDELINES)
+    );
 
     public ConfigurationLogic(DSLContext jooq) {
         super(jooq);
+    }
+
+    static List<Condition> parseCriteriaIntoConditions(boolean exactCriteria, Map<String, String> searchCriteria) {
+        stripOutUnknownFields(searchCriteria, CONFIGURATION);
+        List<Condition> matchConditions = new ArrayList<>();
+        searchCriteria.forEach((key, value) -> {
+            addPossibleCondition(CONFIGURATION.CHARITY_NAME, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(CONFIGURATION.CHARITY_URL, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(CONFIGURATION.EVENT_GUIDELINES, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(CONFIGURATION.FUND_PROCESSOR_INSTRUCTIONS, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(CONFIGURATION.FUND_PROCESSOR_NAME, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(CONFIGURATION.FUND_PROCESSOR_URL, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(CONFIGURATION.RECOMMENDED_DONATION, key, value, exactCriteria).ifPresent(matchConditions::add);
+        });
+        return matchConditions;
     }
 
     @Override
@@ -46,7 +57,7 @@ public class ConfigurationLogic<P extends Configuration> extends Logic implement
                 entry(CONFIGURATION.FUND_PROCESSOR_NAME.getName(), pojo.getFundProcessorName()),
                 entry(CONFIGURATION.FUND_PROCESSOR_URL.getName(), pojo.getFundProcessorUrl()),
                 entry(CONFIGURATION.RECOMMENDED_DONATION.getName(), pojo.getRecommendedDonation().toString()));
-        return fetchByCriteria(criteria, 0, 1).size() > 0;
+        return fetchByCriteria(true, criteria, CONFIGURATION.ID.getName(), false,0, 1).count() > 0;
     }
 
     public Optional<Configuration> fetchLatest() {
@@ -66,14 +77,30 @@ public class ConfigurationLogic<P extends Configuration> extends Logic implement
     }
 
     @Override
-    public List<Configuration> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
-        return jooq
+    public Field<?> resolveField(String columnName, Field<?> defaultField) {
+        return FIELDS.getOrDefault(columnName, defaultField);
+    }
+
+    @Override
+    public ListWithCount<Configuration> fetchByCriteria(boolean exactCriteria, Map<String, String> searchCriteria, String sortColumn, Boolean sortAscending, int offset, int max) {
+        List<Condition> conditions = parseCriteriaIntoConditions(exactCriteria, searchCriteria);
+
+        List<Configuration> results = jooq
                 .selectFrom(CONFIGURATION)
-                .where(parseCriteriaIntoConditions(searchCriteria))
-                .orderBy(CONFIGURATION.ID)
+                .where(buildWhereClause(exactCriteria, conditions))
+                .orderBy(sortAscending
+                        ? resolveField(sortColumn, CONFIGURATION.ID).asc()
+                        : resolveField(sortColumn, CONFIGURATION.ID).desc())
                 .limit(offset, max)
                 .fetchStreamInto(Configuration.class)
                 .toList();
+        int count = jooq
+                .selectCount()
+                .from(CONFIGURATION)
+                .where(conditions)
+                .fetchOptional(0, Integer.class)
+                .orElse(0);
+        return new ListWithCount<>(results, count);
     }
 
     @Override

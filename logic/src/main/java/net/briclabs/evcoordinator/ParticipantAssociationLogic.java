@@ -4,6 +4,7 @@ import net.briclabs.evcoordinator.generated.tables.pojos.ParticipantAssociation;
 import net.briclabs.evcoordinator.generated.tables.records.ParticipantAssociationRecord;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,20 +17,27 @@ import static net.briclabs.evcoordinator.generated.tables.PaymentInfo.PAYMENT_IN
 
 public class ParticipantAssociationLogic<P extends ParticipantAssociation> extends Logic implements WriteLogic<P> {
 
-    static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
-        stripOutUnknownFields(searchCriteria, PAYMENT_INFO);
-        List<Condition> matchConditions = new ArrayList<>();
-        searchCriteria.forEach((key, value) -> {
-            addPossibleCondition(PARTICIPANT_ASSOCIATION.ID, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT_ASSOCIATION.SELF, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT_ASSOCIATION.ASSOCIATE, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT_ASSOCIATION.ASSOCIATION, key, value).ifPresent(matchConditions::add);
-        });
-        return matchConditions;
-    }
+    private static final Map<String, Field<?>> FIELDS = Map.ofEntries(
+            Map.entry("ID", PARTICIPANT_ASSOCIATION.ID),
+            Map.entry("SELF", PARTICIPANT_ASSOCIATION.SELF),
+            Map.entry("ASSOCIATE", PARTICIPANT_ASSOCIATION.ASSOCIATE),
+            Map.entry("ASSOCIATION", PARTICIPANT_ASSOCIATION.ASSOCIATION),
+            Map.entry("TIME_RECORDED", PARTICIPANT_ASSOCIATION.TIME_RECORDED)
+    );
 
     public ParticipantAssociationLogic(DSLContext jooq) {
         super(jooq);
+    }
+
+    static List<Condition> parseCriteriaIntoConditions(boolean exactCriteria, Map<String, String> searchCriteria) {
+        stripOutUnknownFields(searchCriteria, PAYMENT_INFO);
+        List<Condition> matchConditions = new ArrayList<>();
+        searchCriteria.forEach((key, value) -> {
+            addPossibleCondition(PARTICIPANT_ASSOCIATION.SELF, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT_ASSOCIATION.ASSOCIATE, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT_ASSOCIATION.ASSOCIATION, key, value, exactCriteria).ifPresent(matchConditions::add);
+        });
+        return matchConditions;
     }
 
     @Override
@@ -38,7 +46,7 @@ public class ParticipantAssociationLogic<P extends ParticipantAssociation> exten
                 entry(PARTICIPANT_ASSOCIATION.SELF.getName(), Long.toString(pojo.getSelf())),
                 entry(PARTICIPANT_ASSOCIATION.ASSOCIATE.getName(), Long.toString(pojo.getAssociate())),
                 entry(PARTICIPANT_ASSOCIATION.ASSOCIATION.getName(), pojo.getAssociation()));
-        return fetchByCriteria(criteria, 0, 1).size() > 0;
+        return fetchByCriteria(true, criteria, PARTICIPANT_ASSOCIATION.ID.getName(), false,0, 1).count() > 0;
     }
 
     @Override
@@ -50,14 +58,30 @@ public class ParticipantAssociationLogic<P extends ParticipantAssociation> exten
     }
 
     @Override
-    public List<ParticipantAssociation> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
-        return jooq
+    public Field<?> resolveField(String columnName, Field<?> defaultField) {
+        return FIELDS.getOrDefault(columnName, defaultField);
+    }
+
+    @Override
+    public ListWithCount<ParticipantAssociation> fetchByCriteria(boolean exactCriteria, Map<String, String> searchCriteria, String sortColumn, Boolean sortAscending, int offset, int max) {
+        List<Condition> conditions = parseCriteriaIntoConditions(exactCriteria, searchCriteria);
+
+        List<ParticipantAssociation> results = jooq
                 .selectFrom(PARTICIPANT_ASSOCIATION)
-                .where(parseCriteriaIntoConditions(searchCriteria))
-                .orderBy(PARTICIPANT_ASSOCIATION.ID)
+                .where(buildWhereClause(exactCriteria, conditions))
+                .orderBy(sortAscending
+                        ? resolveField(sortColumn, PARTICIPANT_ASSOCIATION.ID).asc()
+                        : resolveField(sortColumn, PARTICIPANT_ASSOCIATION.ID).desc())
                 .limit(offset, max)
                 .fetchStreamInto(ParticipantAssociation.class)
                 .toList();
+        int count = jooq
+                .selectCount()
+                .from(PARTICIPANT_ASSOCIATION)
+                .where(conditions)
+                .fetchOptional(0, Integer.class)
+                .orElse(0);
+        return new ListWithCount<>(results, count);
     }
 
     @Override

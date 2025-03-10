@@ -4,7 +4,10 @@ import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.generated.tables.records.ParticipantRecord;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 import org.jooq.tools.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -17,30 +20,49 @@ import static net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPAN
 
 public class ParticipantLogic<P extends Participant> extends Logic implements WriteLogic<P> {
 
-    static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
-        stripOutUnknownFields(searchCriteria, PARTICIPANT);
-        List<Condition> matchConditions = new ArrayList<>();
-        searchCriteria.forEach((key, value) -> {
-            addPossibleCondition(PARTICIPANT.ID, key, value);
-            addPossibleCondition(PARTICIPANT.PARTICIPANT_TYPE, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.SPONSOR, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.NAME_FIRST, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.NAME_LAST, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.NAME_NICK, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.DOB, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.ADDR_STREET_1, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.ADDR_STREET_2, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.ADDR_CITY, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.ADDR_STATE_ABBR, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.ADDR_ZIP, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.ADDR_EMAIL, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PARTICIPANT.PHONE_DIGITS, key, value).ifPresent(matchConditions::add);
-        });
-        return matchConditions;
-    }
+    private static final Logger LOGGER = LoggerFactory.getLogger(ParticipantLogic.class);
+
+    private static final Map<String, Field<?>> FIELDS = Map.ofEntries(
+            Map.entry("id", PARTICIPANT.ID),
+            Map.entry("participantType", PARTICIPANT.PARTICIPANT_TYPE),
+            Map.entry("nameFirst", PARTICIPANT.NAME_FIRST),
+            Map.entry("nameLast", PARTICIPANT.NAME_LAST),
+            Map.entry("nameNick", PARTICIPANT.NAME_NICK),
+            Map.entry("sponsor", PARTICIPANT.SPONSOR),
+            Map.entry("dob", PARTICIPANT.DOB),
+            Map.entry("addrStreet1", PARTICIPANT.ADDR_STREET_1),
+            Map.entry("addrStreet2", PARTICIPANT.ADDR_STREET_2),
+            Map.entry("addrCity", PARTICIPANT.ADDR_CITY),
+            Map.entry("addrStateAbbr", PARTICIPANT.ADDR_STATE_ABBR),
+            Map.entry("addrZip", PARTICIPANT.ADDR_ZIP),
+            Map.entry("addrEmail", PARTICIPANT.ADDR_EMAIL),
+            Map.entry("phoneDigits", PARTICIPANT.PHONE_DIGITS),
+            Map.entry("timeRecorded", PARTICIPANT.TIME_RECORDED)
+    );
 
     public ParticipantLogic(DSLContext jooq) {
         super(jooq);
+    }
+
+    private static List<Condition> parseCriteriaIntoConditions(boolean exactCriteria, Map<String, String> searchCriteria) {
+        stripOutUnknownFields(searchCriteria, PARTICIPANT);
+        List<Condition> matchConditions = new ArrayList<>();
+        searchCriteria.forEach((key, value) -> {
+            addPossibleCondition(PARTICIPANT.PARTICIPANT_TYPE, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.SPONSOR, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.NAME_FIRST, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.NAME_LAST, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.NAME_NICK, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.DOB, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_STREET_1, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_STREET_2, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_CITY, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_STATE_ABBR, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_ZIP, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.ADDR_EMAIL, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PARTICIPANT.PHONE_DIGITS, key, value, exactCriteria).ifPresent(matchConditions::add);
+        });
+        return matchConditions;
     }
 
     @Override
@@ -50,7 +72,7 @@ public class ParticipantLogic<P extends Participant> extends Logic implements Wr
                 entry(PARTICIPANT.SPONSOR.getName(), pojo.getParticipantType()),
                 entry(PARTICIPANT.NAME_FIRST.getName(), pojo.getNameFirst()),
                 entry(PARTICIPANT.NAME_LAST.getName(), pojo.getNameLast()),
-                entry(PARTICIPANT.NAME_NICK.getName(), pojo.getNameNick()),
+                entry(PARTICIPANT.NAME_NICK.getName(), StringUtils.defaultString(pojo.getNameNick(), "")),
                 entry(PARTICIPANT.DOB.getName(), pojo.getDob().format(DateTimeFormatter.ISO_DATE)),
                 entry(PARTICIPANT.ADDR_STREET_1.getName(), pojo.getAddrStreet_1()),
                 entry(PARTICIPANT.ADDR_STREET_2.getName(), StringUtils.defaultString(pojo.getAddrStreet_2(), "")),
@@ -59,7 +81,7 @@ public class ParticipantLogic<P extends Participant> extends Logic implements Wr
                 entry(PARTICIPANT.ADDR_ZIP.getName(), pojo.getAddrZip().toString()),
                 entry(PARTICIPANT.ADDR_EMAIL.getName(), pojo.getAddrEmail()),
                 entry(PARTICIPANT.PHONE_DIGITS.getName(), pojo.getPhoneDigits().toString()));
-        return fetchByCriteria(criteria, 0, 1).size() > 0;
+        return fetchByCriteria(true, criteria, PARTICIPANT.ID.getName(), false, 0, 1).count() > 0;
     }
 
     @Override
@@ -71,14 +93,34 @@ public class ParticipantLogic<P extends Participant> extends Logic implements Wr
     }
 
     @Override
-    public List<Participant> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
-        return jooq
+    public Field<?> resolveField(String columnName, Field<?> defaultField) {
+        return FIELDS.getOrDefault(columnName, defaultField);
+    }
+
+    @Override
+    public ListWithCount<Participant> fetchByCriteria(boolean exactCriteria, Map<String, String> searchCriteria, String sortColumn, Boolean sortAscending, int offset, int max) {
+        List<Condition> conditions = parseCriteriaIntoConditions(exactCriteria, searchCriteria);
+        Condition whereClause = buildWhereClause(exactCriteria, conditions);
+
+        var query = jooq
                 .selectFrom(PARTICIPANT)
-                .where(parseCriteriaIntoConditions(searchCriteria))
-                .orderBy(PARTICIPANT.ID)
-                .limit(offset, max)
+                .where(whereClause)
+                .orderBy(sortAscending
+                        ? resolveField(sortColumn, PARTICIPANT.ID).asc()
+                        : resolveField(sortColumn, PARTICIPANT.ID).desc())
+                .limit(offset, max);
+        var querySql = query.getQuery().getSQL();
+        LOGGER.info("Query SQL: {}", querySql);
+        List<Participant> results = query
                 .fetchStreamInto(Participant.class)
                 .toList();
+        int count = jooq
+                .selectCount()
+                .from(PARTICIPANT)
+                .where(whereClause)
+                .fetchOptional(0, Integer.class)
+                .orElse(0);
+        return new ListWithCount<>(results, count);
     }
 
     @Override

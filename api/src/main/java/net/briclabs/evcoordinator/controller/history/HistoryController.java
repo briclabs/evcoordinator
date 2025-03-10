@@ -1,20 +1,19 @@
 package net.briclabs.evcoordinator.controller.history;
 
 import net.briclabs.evcoordinator.HistoryLogic;
+import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
+import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.RequestParam;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @Validated
@@ -36,9 +35,15 @@ public class HistoryController extends ApiController<HistoryLogic> {
     }
 
     @Override
-    @GetMapping(value = "/{offset}/{max}")
-    public List<DataHistory> findByCriteria(@PathVariable("offset") int offset, @PathVariable("max") int max, @RequestParam Map<String, String> criteria) {
-        return new ArrayList<>(logic.fetchByCriteria(criteria, offset, max));
+    @PostMapping(path = "/search")
+    public ListWithCount<DataHistory> search(@RequestBody SearchRequest searchRequest) {
+        return logic.fetchByCriteria(
+                searchRequest.searchConfiguration().exactMatch(),
+                searchRequest.searchCriteria(),
+                searchRequest.searchConfiguration().sortColumn(),
+                searchRequest.searchConfiguration().sortAsc(),
+                searchRequest.searchConfiguration().offset(),
+                searchRequest.searchConfiguration().max()
+        );
     }
-
 }

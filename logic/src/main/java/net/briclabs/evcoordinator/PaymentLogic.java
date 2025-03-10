@@ -5,6 +5,7 @@ import net.briclabs.evcoordinator.generated.tables.pojos.Payment;
 import net.briclabs.evcoordinator.generated.tables.records.PaymentRecord;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,22 +17,31 @@ import static net.briclabs.evcoordinator.generated.tables.Payment.PAYMENT;
 
 public class PaymentLogic<P extends Payment> extends Logic implements WriteLogic<P> {
 
-    static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
-        stripOutUnknownFields(searchCriteria, PAYMENT);
-        List<Condition> matchConditions = new ArrayList<>();
-        searchCriteria.forEach((key, value) -> {
-            addPossibleCondition(PAYMENT.ID, key, value);
-            addPossibleCondition(PAYMENT.PAYMENT_ACTION_TYPE, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PAYMENT.ACTOR_ID, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PAYMENT.PAYMENT_ID, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PAYMENT.RECIPIENT_ID, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(PAYMENT.EVENT_ID, key, value).ifPresent(matchConditions::add);
-        });
-        return matchConditions;
-    }
+    private static final Map<String, Field<?>> FIELDS = Map.ofEntries(
+            Map.entry("ID", PAYMENT.ID),
+            Map.entry("EVENT_ID", PAYMENT.EVENT_ID),
+            Map.entry("ACTOR_ID", PAYMENT.ACTOR_ID),
+            Map.entry("PAYMENT_ACTION_TYPE", PAYMENT.PAYMENT_ACTION_TYPE),
+            Map.entry("RECIPIENT_ID", PAYMENT.RECIPIENT_ID),
+            Map.entry("PAYMENT_ID", PAYMENT.PAYMENT_ID),
+            Map.entry("TIME_RECORDED", PAYMENT.TIME_RECORDED)
+    );
 
     public PaymentLogic(DSLContext jooq) {
         super(jooq);
+    }
+
+    static List<Condition> parseCriteriaIntoConditions(boolean exactCriteria, Map<String, String> searchCriteria) {
+        stripOutUnknownFields(searchCriteria, PAYMENT);
+        List<Condition> matchConditions = new ArrayList<>();
+        searchCriteria.forEach((key, value) -> {
+            addPossibleCondition(PAYMENT.PAYMENT_ACTION_TYPE, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.ACTOR_ID, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.PAYMENT_ID, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.RECIPIENT_ID, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(PAYMENT.EVENT_ID, key, value, exactCriteria).ifPresent(matchConditions::add);
+        });
+        return matchConditions;
     }
 
     @Override
@@ -42,7 +52,7 @@ public class PaymentLogic<P extends Payment> extends Logic implements WriteLogic
                 entry(PAYMENT.PAYMENT_ID.getName(), Long.toString(pojo.getPaymentId())),
                 entry(PAYMENT.RECIPIENT_ID.getName(), Long.toString(pojo.getRecipientId())),
                 entry(PAYMENT.EVENT_ID.getName(), Long.toString(pojo.getEventId())));
-        return fetchByCriteria(criteria, 0, 1).size() > 0;
+        return fetchByCriteria(true, criteria, PAYMENT.ID.getName(), false,0, 1).count() > 0;
     }
 
     @Override
@@ -54,14 +64,30 @@ public class PaymentLogic<P extends Payment> extends Logic implements WriteLogic
     }
 
     @Override
-    public List<Payment> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
-        return jooq
+    public Field<?> resolveField(String columnName, Field<?> defaultField) {
+        return FIELDS.getOrDefault(columnName, defaultField);
+    }
+
+    @Override
+    public ListWithCount<Payment> fetchByCriteria(boolean exactCriteria, Map<String, String> searchCriteria, String sortColumn, Boolean sortAscending, int offset, int max) {
+        List<Condition> conditions = parseCriteriaIntoConditions(exactCriteria, searchCriteria);
+
+        List<Payment> results = jooq
                 .selectFrom(PAYMENT)
-                .where(parseCriteriaIntoConditions(searchCriteria))
-                .orderBy(PAYMENT.ID)
+                .where(buildWhereClause(exactCriteria, conditions))
+                .orderBy(sortAscending
+                        ? resolveField(sortColumn, PAYMENT.ID).asc()
+                        : resolveField(sortColumn, PAYMENT.ID).desc())
                 .limit(offset, max)
                 .fetchStreamInto(Payment.class)
                 .toList();
+        int count = jooq
+                .selectCount()
+                .from(PAYMENT)
+                .where(conditions)
+                .fetchOptional(0, Integer.class)
+                .orElse(0);
+        return new ListWithCount<>(results, count);
     }
 
     @Override

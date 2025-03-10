@@ -53,9 +53,10 @@ CREATE TABLE IF NOT EXISTS participant (
    addr_state_abbr character varying NOT NULL,
    addr_zip int NOT NULL,
    addr_email character varying NOT NULL,
-   phone_digits int NOT NULL,
+   phone_digits bigint NOT NULL,
    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
-   PRIMARY KEY (id) );
+   PRIMARY KEY (id),
+   UNIQUE (addr_email));
 
 CREATE TABLE IF NOT EXISTS participant_association (
     id bigint GENERATED ALWAYS AS IDENTITY,

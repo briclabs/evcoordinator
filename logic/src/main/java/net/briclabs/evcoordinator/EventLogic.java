@@ -4,6 +4,7 @@ import net.briclabs.evcoordinator.generated.tables.pojos.Event;
 import net.briclabs.evcoordinator.generated.tables.records.EventRecord;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,20 +16,27 @@ import static net.briclabs.evcoordinator.generated.tables.Event.EVENT;
 
 public class EventLogic<P extends Event> extends Logic implements WriteLogic<P> {
 
-    static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
-        stripOutUnknownFields(searchCriteria, EVENT);
-        List<Condition> matchConditions = new ArrayList<>();
-        searchCriteria.forEach((key, value) -> {
-            addPossibleCondition(EVENT.ID, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(EVENT.EVENT_ID, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(EVENT.PARTICIPANT_ID, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(EVENT.ACTION_TYPE, key, value).ifPresent(matchConditions::add);
-        });
-        return matchConditions;
-    }
+    private static final Map<String, Field<?>> FIELDS = Map.ofEntries(
+            Map.entry("ID", EVENT.ID),
+            Map.entry("PARTICIPANT_ID", EVENT.PARTICIPANT_ID),
+            Map.entry("ACTION_TYPE", EVENT.ACTION_TYPE),
+            Map.entry("EVENT_ID", EVENT.EVENT_ID),
+            Map.entry("TIME_RECORDED", EVENT.TIME_RECORDED)
+    );
 
     public EventLogic(DSLContext jooq) {
         super(jooq);
+    }
+
+    static List<Condition> parseCriteriaIntoConditions(boolean exactCriteria, Map<String, String> searchCriteria) {
+        stripOutUnknownFields(searchCriteria, EVENT);
+        List<Condition> matchConditions = new ArrayList<>();
+        searchCriteria.forEach((key, value) -> {
+            addPossibleCondition(EVENT.EVENT_ID, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT.PARTICIPANT_ID, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT.ACTION_TYPE, key, value, exactCriteria).ifPresent(matchConditions::add);
+        });
+        return matchConditions;
     }
 
     @Override
@@ -37,7 +45,7 @@ public class EventLogic<P extends Event> extends Logic implements WriteLogic<P> 
                 entry(EVENT.EVENT_ID.getName(), Long.toString(pojo.getEventId())),
                 entry(EVENT.ACTION_TYPE.getName(), pojo.getActionType()),
                 entry(EVENT.PARTICIPANT_ID.getName(), Long.toString(pojo.getParticipantId())));
-        return fetchByCriteria(criteria, 0, 1).size() > 0;
+        return fetchByCriteria(true, criteria, EVENT.ID.getName(), false,0, 1).count() > 0;
     }
 
     @Override
@@ -50,14 +58,30 @@ public class EventLogic<P extends Event> extends Logic implements WriteLogic<P> 
     }
 
     @Override
-    public List<Event> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
-        return jooq
+    public Field<?> resolveField(String columnName, Field<?> defaultField) {
+        return FIELDS.getOrDefault(columnName, defaultField);
+    }
+
+    @Override
+    public ListWithCount<Event> fetchByCriteria(boolean exactCriteria, Map<String, String> searchCriteria, String sortColumn, Boolean sortAscending, int offset, int max) {
+        List<Condition> conditions = parseCriteriaIntoConditions(exactCriteria, searchCriteria);
+
+        List<Event> results = jooq
                 .selectFrom(EVENT)
-                .where(parseCriteriaIntoConditions(searchCriteria))
-                .orderBy(EVENT.ID)
+                .where(buildWhereClause(exactCriteria, conditions))
+                .orderBy(sortAscending
+                        ? resolveField(sortColumn, EVENT.ID).asc()
+                        : resolveField(sortColumn, EVENT.ID).desc())
                 .limit(offset, max)
                 .fetchStreamInto(Event.class)
                 .toList();
+        int count = jooq
+                .selectCount()
+                .from(EVENT)
+                .where(conditions)
+                .fetchOptional(0, Integer.class)
+                .orElse(0);
+        return new ListWithCount<>(results, count);
     }
 
     @Override

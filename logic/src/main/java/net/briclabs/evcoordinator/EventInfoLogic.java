@@ -4,6 +4,7 @@ import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
 import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
+import org.jooq.Field;
 
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -16,22 +17,32 @@ import static net.briclabs.evcoordinator.generated.tables.EventInfo.EVENT_INFO;
 
 public class EventInfoLogic<P extends EventInfo> extends Logic implements WriteLogic<P> {
 
-    static List<Condition> parseCriteriaIntoConditions(Map<String, String> searchCriteria) {
-        stripOutUnknownFields(searchCriteria, EVENT_INFO);
-        List<Condition> matchConditions = new ArrayList<>();
-        searchCriteria.forEach((key, value) -> {
-            addPossibleCondition(EVENT_INFO.ID, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(EVENT_INFO.EVENT_STATUS, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(EVENT_INFO.EVENT_NAME, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(EVENT_INFO.EVENT_TITLE, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(EVENT_INFO.DATE_START, key, value).ifPresent(matchConditions::add);
-            addPossibleCondition(EVENT_INFO.DATE_END, key, value).ifPresent(matchConditions::add);
-        });
-        return matchConditions;
-    }
+    private static final Map<String, Field<?>> FIELDS = Map.ofEntries(
+            Map.entry("ID", EVENT_INFO.ID),
+            Map.entry("EVENT_NAME", EVENT_INFO.EVENT_NAME),
+            Map.entry("EVENT_TITLE", EVENT_INFO.EVENT_TITLE),
+            Map.entry("DATE_START", EVENT_INFO.DATE_START),
+            Map.entry("DATE_END", EVENT_INFO.DATE_END),
+            Map.entry("EVENT_STATUS", EVENT_INFO.EVENT_STATUS),
+            Map.entry("TIME_RECORDED", EVENT_INFO.TIME_RECORDED)
+
+    );
 
     public EventInfoLogic(DSLContext jooq) {
         super(jooq);
+    }
+
+    static List<Condition> parseCriteriaIntoConditions(boolean exactCriteria, Map<String, String> searchCriteria) {
+        stripOutUnknownFields(searchCriteria, EVENT_INFO);
+        List<Condition> matchConditions = new ArrayList<>();
+        searchCriteria.forEach((key, value) -> {
+            addPossibleCondition(EVENT_INFO.EVENT_STATUS, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.EVENT_NAME, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.EVENT_TITLE, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.DATE_START, key, value, exactCriteria).ifPresent(matchConditions::add);
+            addPossibleCondition(EVENT_INFO.DATE_END, key, value, exactCriteria).ifPresent(matchConditions::add);
+        });
+        return matchConditions;
     }
 
     @Override
@@ -42,7 +53,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic implements WriteL
                 entry(EVENT_INFO.EVENT_TITLE.getName(), pojo.getEventTitle()),
                 entry(EVENT_INFO.DATE_START.getName(), pojo.getDateStart().format(DateTimeFormatter.ISO_DATE)),
                 entry(EVENT_INFO.DATE_END.getName(), pojo.getDateEnd().format(DateTimeFormatter.ISO_DATE)));
-        return fetchByCriteria(criteria, 0, 1).size() > 0;
+        return fetchByCriteria(true, criteria, EVENT_INFO.ID.getName(), false,0, 1).count() > 0;
     }
 
     @Override
@@ -54,14 +65,30 @@ public class EventInfoLogic<P extends EventInfo> extends Logic implements WriteL
     }
 
     @Override
-    public List<EventInfo> fetchByCriteria(Map<String, String> searchCriteria, int offset, int max) {
-        return jooq
+    public Field<?> resolveField(String columnName, Field<?> defaultField) {
+        return FIELDS.getOrDefault(columnName, defaultField);
+    }
+
+    @Override
+    public ListWithCount<EventInfo> fetchByCriteria(boolean exactCriteria, Map<String, String> searchCriteria, String sortColumn, Boolean sortAscending, int offset, int max) {
+        List<Condition> conditions = parseCriteriaIntoConditions(exactCriteria, searchCriteria);
+
+        List<EventInfo> results = jooq
                 .selectFrom(EVENT_INFO)
-                .where(parseCriteriaIntoConditions(searchCriteria))
-                .orderBy(EVENT_INFO.ID)
+                .where(buildWhereClause(exactCriteria, conditions))
+                .orderBy(sortAscending
+                        ? resolveField(sortColumn, EVENT_INFO.ID).asc()
+                        : resolveField(sortColumn, EVENT_INFO.ID).desc())
                 .limit(offset, max)
                 .fetchStreamInto(EventInfo.class)
                 .toList();
+        int count = jooq
+                .selectCount()
+                .from(EVENT_INFO)
+                .where(conditions)
+                .fetchOptional(0, Integer.class)
+                .orElse(0);
+        return new ListWithCount<>(results, count);
     }
 
     @Override
