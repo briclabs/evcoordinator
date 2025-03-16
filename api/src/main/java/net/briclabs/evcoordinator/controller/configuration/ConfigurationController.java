@@ -31,8 +31,8 @@ import org.springframework.web.client.HttpClientErrorException;
         allowedHeaders = "*",
         methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT }
 )
-@Validated
 @EnableMethodSecurity
+@Validated
 @RequestMapping(ApiController.V1 + "/configuration")
 public class ConfigurationController<P extends Configuration> extends ApiController<ConfigurationLogic<P>> implements WriteController<P> {
 
@@ -73,7 +73,6 @@ public class ConfigurationController<P extends Configuration> extends ApiControl
         if (logic.validateIsTrulyNew(participant)) {
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
         }
-
         return logic.insertNew(participant).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
