@@ -55,6 +55,8 @@ public class ApiConfig {
         http
                 .authorizeHttpRequests(authorizeHttpRequests -> authorizeHttpRequests
                         .requestMatchers("/v1/configuration/latest").permitAll()
+                        .requestMatchers("/v1/event/info/latest").permitAll()
+                        .requestMatchers("/v1/registration").permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(httpSecurityOAuth2ResourceServerConfigurer -> httpSecurityOAuth2ResourceServerConfigurer
                         .jwt(Customizer.withDefaults()))

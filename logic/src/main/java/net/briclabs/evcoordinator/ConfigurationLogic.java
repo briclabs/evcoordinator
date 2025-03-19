@@ -30,8 +30,7 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
     }
 
     /**
-     * Fetches the latest configuration entry from the database table based on the descending order
-     * of the ID column. If no entries exist in the table, an empty {@code Optional} is returned.
+     * Fetches the latest configuration entry. If no entries exist in the table, an empty {@code Optional} is returned.
      *
      * @return an {@code Optional<Configuration>} containing the latest configuration entry if present, or empty if no entries exist.
      */

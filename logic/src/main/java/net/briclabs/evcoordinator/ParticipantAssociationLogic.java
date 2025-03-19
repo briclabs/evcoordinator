@@ -19,7 +19,8 @@ public class ParticipantAssociationLogic<P extends ParticipantAssociation> exten
     public boolean validateIsTrulyNew(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().SELF.getName(), Long.toString(pojo.getSelf())),
-                entry(getTable().ASSOCIATE.getName(), Long.toString(pojo.getAssociate())),
+                entry(getTable().ASSOCIATE.getName(), Optional.ofNullable(pojo.getAssociate()).map(value -> Long.toString(value)).orElse("")),
+                entry(getTable().RAW_ASSOCIATE_NAME.getName(), pojo.getRawAssociateName()),
                 entry(getTable().ASSOCIATION.getName(), pojo.getAssociation()));
         return fetchByCriteria(true, criteria, getIdColumn().getName(), false,0, 1).count() > 0;
     }
@@ -30,6 +31,7 @@ public class ParticipantAssociationLogic<P extends ParticipantAssociation> exten
                 .insertInto(getTable())
                 .set(getTable().SELF, pojo.getSelf())
                 .set(getTable().ASSOCIATE, pojo.getAssociate())
+                .set(getTable().RAW_ASSOCIATE_NAME, pojo.getRawAssociateName())
                 .set(getTable().ASSOCIATION, pojo.getAssociation())
                 .returning(getIdColumn())
                 .fetchOptional()
@@ -42,11 +44,13 @@ public class ParticipantAssociationLogic<P extends ParticipantAssociation> exten
                 .update(getTable())
                 .set(getTable().SELF, update.getSelf())
                 .set(getTable().ASSOCIATE, update.getAssociate())
+                .set(getTable().RAW_ASSOCIATE_NAME, update.getRawAssociateName())
                 .set(getTable().ASSOCIATION, update.getAssociation())
                 .where(getIdColumn().eq(update.getId()))
                 .and(
                         getTable().SELF.notEqual(update.getSelf())
                     .or(getTable().ASSOCIATE.notEqual(update.getAssociate()))
+                    .or(getTable().RAW_ASSOCIATE_NAME.notEqual(update.getRawAssociateName()))
                     .or(getTable().ASSOCIATION.notEqual(update.getAssociation()))
                 ).execute();
     }

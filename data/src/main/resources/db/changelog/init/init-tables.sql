@@ -61,8 +61,9 @@ CREATE TABLE IF NOT EXISTS participant (
 CREATE TABLE IF NOT EXISTS participant_association (
     id bigint GENERATED ALWAYS AS IDENTITY,
     self bigint REFERENCES participant(id) NOT NULL,
-    associate bigint REFERENCES participant(id) NOT NULL,
-    association text NOT NULL,
+    raw_associate_name text NOT NULL,
+    associate bigint REFERENCES participant(id),
+    association text REFERENCES participant_association_type(association_type) NOT NULL,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
@@ -89,9 +90,17 @@ CREATE TABLE IF NOT EXISTS event_info (
 CREATE TABLE IF NOT EXISTS event (
     id bigint GENERATED ALWAYS AS IDENTITY,
     participant_id bigint REFERENCES participant(id) NOT NULL,
+    donation_pledge decimal(16, 8) NOT NULL,
+    signature text NOT NULL,
     action_type text REFERENCES event_action(event_action_type) NOT NULL,
-    event_id bigint REFERENCES event_info(id) NOT NULL,
+    event_info_id bigint REFERENCES event_info(id) NOT NULL,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+    PRIMARY KEY (id) );
+
+CREATE TABLE IF NOT EXISTS event_participant_association (
+    id bigint GENERATED ALWAYS AS IDENTITY,
+    participant_association_id bigint REFERENCES participant_association(id) NOT NULL,
+    event_id bigint REFERENCES event(id) NOT NULL,
     PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS payment_info (

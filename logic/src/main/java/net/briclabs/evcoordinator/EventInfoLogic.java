@@ -27,6 +27,20 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
         return fetchByCriteria(true, criteria, getIdColumn().getName(), false,0, 1).count() > 0;
     }
 
+    /**
+     * Fetches the latest event info entry. If no entries exist in the table, an empty {@code Optional} is returned.
+     *
+     * @return an {@code Optional<EventInfo>} containing the latest event info entry if present, or empty if no entries exist.
+     */
+    public Optional<EventInfo> fetchLatest() {
+        return jooq
+                .selectFrom(getTable())
+                .where(getTable().EVENT_STATUS.eq("CURRENT"))
+                .orderBy(getIdColumn().desc())
+                .limit(1)
+                .fetchOptionalInto(getRecordType());
+    }
+
     @Override
     public Optional<Long> insertNew(P pojo) {
         return jooq

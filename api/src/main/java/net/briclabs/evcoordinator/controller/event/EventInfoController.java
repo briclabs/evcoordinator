@@ -46,6 +46,11 @@ public class EventInfoController<P extends EventInfo> extends ApiController<Even
         return logic.fetchById(id).orElse(null);
     }
 
+    @GetMapping(value = "/latest")
+    public EventInfo findLatest() {
+        return logic.fetchLatest().orElse(null);
+    }
+
     @Override
     @PostMapping(path = "/search")
     public ListWithCount<EventInfo> search(@RequestBody SearchRequest searchRequest) {
