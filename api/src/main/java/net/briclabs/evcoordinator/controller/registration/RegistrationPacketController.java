@@ -62,7 +62,7 @@ public class RegistrationPacketController<P extends RegistrationPacket> extends 
     }
 
     @Override
-    @PostMapping
+    @PostMapping(value = "/newProfile")
     @ResponseStatus(HttpStatus.CREATED)
     public Long create(@RequestBody P registration) throws HttpClientErrorException {
         if (registration == null) {
@@ -70,6 +70,16 @@ public class RegistrationPacketController<P extends RegistrationPacket> extends 
         }
 
         return logic.insertNew(registration).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+    }
+
+    @PostMapping(value = "/preExisting")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Long createPreexisting(@RequestBody P registration) throws HttpClientErrorException {
+        if (registration == null) {
+            throw new HttpClientErrorException(HttpStatus.BAD_REQUEST);
+        }
+
+        return logic.insertNewRegistrationWithPreexistingProfile(registration).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
     }
 
     @Override

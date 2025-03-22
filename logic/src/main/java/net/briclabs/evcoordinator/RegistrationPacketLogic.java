@@ -101,8 +101,7 @@ public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic
      */
     @Override
     public Optional<Long> insertNew(P registrationRequest) {
-        if (registrationRequest.participant() == null || registrationRequest.associations() == null || registrationRequest.registration() == null) {
-            LOGGER.error("Attempted to insert a registration packet with null values. Aborting.");
+        if (isPacketIncomplete(registrationRequest)) {
             return Optional.empty();
         }
 
@@ -112,15 +111,53 @@ public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic
             return Optional.empty();
         }
 
-        var registrationToCreate = new Registration(null, participantId.get(), registrationRequest.registration().getDonationPledge(), registrationRequest.registration().getSignature(), registrationRequest.registration().getEventInfoId(), null);
+        return insertNewRegistration(registrationRequest.registration(), registrationRequest.associations(), participantId.get());
+    }
+
+    /**
+     * Inserts a new registration packet by utilizing an existing participant profile if available.
+     * This method retrieves a preexisting participant based on the provided registration request
+     * details and creates a complete registration packet with associated data. The registration
+     * packet is then passed to another method to handle insertion.
+     *
+     * @param registrationRequest The registration request containing participant details,
+     *        associations, and registration information. This data is used to locate an
+     *        existing participant and create a complete registration packet.
+     * @return An {@code Optional<Long>} containing the ID of the newly created registration,
+     *         or an empty {@code Optional} if the operation fails at any stage.
+     */
+    public Optional<Long> insertNewRegistrationWithPreexistingProfile(P registrationRequest) {
+        if (isPacketIncomplete(registrationRequest)) {
+            return Optional.empty();
+        }
+
+        var preexistingParticipant = participantLogic.fetchPreexistingAttendeeByNameAndEmail(registrationRequest.participant().getNameFirst(), registrationRequest.participant().getNameLast(), registrationRequest.participant().getAddrEmail());
+        if (preexistingParticipant.count() == 0 ) {
+            LOGGER.error("No preexisting participant found with the provided name and email. Aborting.");
+            return Optional.empty();
+        }
+
+        return insertNewRegistration(registrationRequest.registration(), registrationRequest.associations(), preexistingParticipant.list().get(0).getId());
+    }
+
+    private boolean isPacketIncomplete(P registrationRequest) {
+        if (registrationRequest.participant() == null || registrationRequest.associations() == null || registrationRequest.registration() == null) {
+            LOGGER.error("Attempted to insert a registration packet with null values. Aborting.");
+            return true;
+        }
+        return false;
+    }
+
+    private Optional<Long> insertNewRegistration(Registration registration, ParticipantAssociation[] associations, Long presentParticipantId) {
+        var registrationToCreate = new Registration(null, presentParticipantId, registration.getDonationPledge(), registration.getSignature(), registration.getEventInfoId(), null);
         Optional<Long> registrationId = registrationLogic.isAlreadyRecorded(registrationToCreate) ? Optional.empty() : registrationLogic.insertNew(registrationToCreate);
         if (registrationId.isEmpty()) {
             LOGGER.error("Failed to insert a registration.");
             return Optional.empty();
         }
 
-        for (var association : registrationRequest.associations()) {
-            var associationToCreate = new ParticipantAssociation(null, participantId.get(), association.getRawAssociateName(), null, association.getAssociation(), null);
+        for (var association : associations) {
+            var associationToCreate = new ParticipantAssociation(null, presentParticipantId, association.getRawAssociateName(), null, association.getAssociation(), null);
             Optional<Long> associationId = participantAssociationLogic.isAlreadyRecorded(associationToCreate) ? Optional.empty() : participantAssociationLogic.insertNew(associationToCreate);
             if (associationId.isEmpty()) {
                 LOGGER.error("Failed to insert a participant association.");
@@ -134,7 +171,7 @@ public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic
             LOGGER.info("Successfully inserted participant association ID {} for registration ID {}.", associationId.get(), registrationId.get());
         }
 
-        LOGGER.info("Successfully inserted participant ID {} and registration ID {}.", participantId.get(), registrationId.get());
+        LOGGER.info("Successfully inserted participant ID {} and registration ID {}.", presentParticipantId, registrationId.get());
         return registrationId;
     }
 

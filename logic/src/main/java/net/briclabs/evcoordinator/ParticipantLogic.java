@@ -17,6 +17,27 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
         super(jooq, Participant.class, PARTICIPANT, PARTICIPANT.ID);
     }
 
+    /**
+     * Fetches preexisting attendees based on their first name, last name, and email address.
+     *
+     * @param nameFirst The first name of the attendee to search for.
+     * @param nameLast The last name of the attendee to search for.
+     * @param addrEmail The email address of the attendee to search for.
+     * @return A list with count containing participants that match the provided criteria.
+     */
+    public ListWithCount<Participant> fetchPreexistingAttendeeByNameAndEmail(String nameFirst, String nameLast, String addrEmail) {
+        return fetchByCriteria(
+                true,
+                Map.of(net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.PARTICIPANT_TYPE.getName(), "ATTENDEE",
+                        net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.NAME_FIRST.getName(), nameFirst,
+                        net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.NAME_LAST.getName(), nameLast,
+                        net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.ADDR_EMAIL.getName(), addrEmail),
+                null,
+                false,
+                0,
+                1);
+    }
+
     @Override
     public boolean isAlreadyRecorded(P pojo) {
         Map<String, String> criteria = Map.ofEntries(

@@ -7,8 +7,11 @@ import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -35,9 +38,24 @@ import org.springframework.web.client.HttpClientErrorException;
 @RequestMapping(ApiController.V1 + "/participant")
 public class ParticipantController<P extends Participant> extends ApiController<ParticipantLogic<P>> implements WriteController<P> {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ParticipantController.class);
+
     @Autowired
     public ParticipantController(DSLContext dslContext) {
         super(dslContext, new ParticipantLogic<>(dslContext));
+    }
+
+    @PostMapping("/preexists")
+    public ResponseEntity<Void> preexists(@RequestBody P participant) {
+        var preexistingParticipant = logic.fetchPreexistingAttendeeByNameAndEmail(participant.getNameFirst(), participant.getNameLast(), participant.getAddrEmail());
+
+        LOGGER.info("preexistingParticipant: {}", preexistingParticipant);
+
+        if (preexistingParticipant.count() > 0) {
+            return ResponseEntity.ok().build();
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @Override
