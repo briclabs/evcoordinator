@@ -63,7 +63,7 @@ public class PaymentController<P extends Payment> extends ApiController<PaymentL
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Long create(@RequestBody P payment) throws HttpClientErrorException {
-        if (logic.validateIsTrulyNew(payment)) {
+        if (logic.isAlreadyRecorded(payment)) {
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
         }
         return logic.insertNew(payment).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));

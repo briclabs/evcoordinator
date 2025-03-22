@@ -68,7 +68,7 @@ public class EventInfoController<P extends EventInfo> extends ApiController<Even
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Long create(@RequestBody P eventInfo) throws HttpClientErrorException {
-        if (logic.validateIsTrulyNew(eventInfo)) {
+        if (logic.isAlreadyRecorded(eventInfo)) {
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
         }
         return logic.insertNew(eventInfo).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));

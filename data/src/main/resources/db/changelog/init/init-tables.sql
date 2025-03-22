@@ -13,9 +13,6 @@ INSERT INTO participant_type (participant_type) VALUES ('VENDOR'), ('VENUE'), ('
 CREATE TABLE IF NOT EXISTS participant_association_type ( association_type text PRIMARY KEY );
 INSERT INTO participant_association_type (association_type) VALUES ('INVITEE'), ('CHILD'), ('PET');
 
-CREATE TABLE IF NOT EXISTS event_action ( event_action_type text PRIMARY KEY );
-INSERT INTO event_action (event_action_type) VALUES ('REGISTERED');
-
 CREATE TABLE IF NOT EXISTS event_status ( event_status_type text PRIMARY KEY );
 INSERT INTO event_status (event_status_type) VALUES ('CURRENT'), ('PAST'), ('CANCELLED');
 
@@ -87,36 +84,29 @@ CREATE TABLE IF NOT EXISTS event_info (
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
-CREATE TABLE IF NOT EXISTS event (
+CREATE TABLE IF NOT EXISTS registration (
     id bigint GENERATED ALWAYS AS IDENTITY,
     participant_id bigint REFERENCES participant(id) NOT NULL,
     donation_pledge decimal(16, 8) NOT NULL,
     signature text NOT NULL,
-    action_type text REFERENCES event_action(event_action_type) NOT NULL,
     event_info_id bigint REFERENCES event_info(id) NOT NULL,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
-CREATE TABLE IF NOT EXISTS event_participant_association (
+CREATE TABLE IF NOT EXISTS registration_participant_association (
     id bigint GENERATED ALWAYS AS IDENTITY,
     participant_association_id bigint REFERENCES participant_association(id) NOT NULL,
-    event_id bigint REFERENCES event(id) NOT NULL,
-    PRIMARY KEY (id) );
-
-CREATE TABLE IF NOT EXISTS payment_info (
-    id bigint GENERATED ALWAYS AS IDENTITY,
-    amount decimal(16, 8) NOT NULL,
-    payment_type text REFERENCES payment_type(payment_type) NOT NULL,
-    instrument_type text REFERENCES payment_instrument(payment_instrument_type) NOT NULL,
-    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
+    registration_id bigint REFERENCES registration(id) NOT NULL,
     PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS payment (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    event_id bigint REFERENCES event_info(id) NOT NULL,
+    event_info_id bigint REFERENCES event_info(id) NOT NULL,
     actor_id bigint REFERENCES participant(id) NOT NULL,
     payment_action_type text REFERENCES payment_action(payment_action_type) NOT NULL,
     recipient_id bigint REFERENCES participant(id) NOT NULL,
-    payment_id bigint REFERENCES payment_info(id) NOT NULL,
+    amount decimal(16, 8) NOT NULL,
+    payment_type text REFERENCES payment_type(payment_type) NOT NULL,
+    instrument_type text REFERENCES payment_instrument(payment_instrument_type) NOT NULL,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );

@@ -18,7 +18,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
     }
 
     @Override
-    public boolean validateIsTrulyNew(P pojo) {
+    public boolean isAlreadyRecorded(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().PARTICIPANT_TYPE.getName(), pojo.getParticipantType()),
                 entry(getTable().SPONSOR.getName(), pojo.getParticipantType()),

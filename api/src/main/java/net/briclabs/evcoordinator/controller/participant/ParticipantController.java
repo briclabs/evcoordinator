@@ -63,7 +63,7 @@ public class ParticipantController<P extends Participant> extends ApiController<
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Long create(@RequestBody P participant) throws HttpClientErrorException {
-        if (logic.validateIsTrulyNew(participant)) {
+        if (logic.isAlreadyRecorded(participant)) {
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
         }
         return logic.insertNew(participant).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));

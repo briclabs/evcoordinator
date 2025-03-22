@@ -17,7 +17,7 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
     }
 
     @Override
-    public boolean validateIsTrulyNew(P pojo) {
+    public boolean isAlreadyRecorded(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().CHARITY_NAME.getName(), pojo.getCharityName()),
                 entry(getTable().CHARITY_URL.getName(), pojo.getCharityUrl()),

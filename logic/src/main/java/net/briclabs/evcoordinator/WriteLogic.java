@@ -11,7 +11,7 @@ public interface WriteLogic<P extends Serializable> {
      * @param pojo the POJO being considered.
      * @return whether the POJO being considered already exists in the database.
      */
-    boolean validateIsTrulyNew(P pojo);
+    boolean isAlreadyRecorded(P pojo);
 
     /**
      * Adds a new record to the database.

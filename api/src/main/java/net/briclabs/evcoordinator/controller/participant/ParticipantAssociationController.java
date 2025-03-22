@@ -63,7 +63,7 @@ public class ParticipantAssociationController<P extends ParticipantAssociation> 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public Long create(@RequestBody P participantAssociation) throws HttpClientErrorException {
-        if (logic.validateIsTrulyNew(participantAssociation)) {
+        if (logic.isAlreadyRecorded(participantAssociation)) {
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
         }
         return logic.insertNew(participantAssociation).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));

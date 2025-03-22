@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public abstract class Logic<R extends UpdatableRecordImpl<R>, P extends Serializable, T extends TableImpl<R>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Logic.class);
@@ -110,10 +111,10 @@ public abstract class Logic<R extends UpdatableRecordImpl<R>, P extends Serializ
         return new ListWithCount<>(query.fetchStreamInto(getRecordType()).toList(), count);
     }
 
-    private static <R extends UpdatableRecordImpl<R>> void stripOutUnknownFields(Map<String, String> searchCriteria, Table<R> table) {
-        searchCriteria.entrySet().stream().filter(e -> StringUtils.isBlank(e.getValue().trim()) || table.fieldStream().noneMatch(field -> field.getName().equalsIgnoreCase(e.getKey())))
-                .map(Map.Entry::getKey)
-                .forEach(searchCriteria::remove);
+    private static <R extends UpdatableRecordImpl<R>> Map<String, String> stripOutUnknownFields(Map<String, String> searchCriteria, Table<R> table) {
+        return searchCriteria.entrySet().stream()
+                .filter(entry -> !StringUtils.isBlank(entry.getValue().trim()) && table.fieldStream().anyMatch(field -> field.getName().equalsIgnoreCase(entry.getKey())))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
     private static Condition buildWhereClause(boolean exactCriteria, List<Condition> conditions) {
@@ -139,9 +140,9 @@ public abstract class Logic<R extends UpdatableRecordImpl<R>, P extends Serializ
     }
 
     private List<Condition> parseCriteriaIntoConditions(boolean exactCriteria, Map<String, String> searchCriteria) {
-        stripOutUnknownFields(searchCriteria, getTable());
+        var revisedSearchCriteria = stripOutUnknownFields(searchCriteria, getTable());
         List<Condition> matchConditions = new ArrayList<>();
-        searchCriteria.forEach((key, value) -> getTable().fieldStream()
+        revisedSearchCriteria.forEach((key, value) -> getTable().fieldStream()
             .filter(field -> field.getName().equalsIgnoreCase(key))
             .findFirst().flatMap(field -> Logic.addPossibleCondition(field, key, value, exactCriteria)).ifPresent(matchConditions::add)
         );

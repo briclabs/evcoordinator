@@ -16,7 +16,7 @@ public class ParticipantAssociationLogic<P extends ParticipantAssociation> exten
     }
 
     @Override
-    public boolean validateIsTrulyNew(P pojo) {
+    public boolean isAlreadyRecorded(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().SELF.getName(), Long.toString(pojo.getSelf())),
                 entry(getTable().ASSOCIATE.getName(), Optional.ofNullable(pojo.getAssociate()).map(value -> Long.toString(value)).orElse("")),

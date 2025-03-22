@@ -17,7 +17,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
     }
 
     @Override
-    public boolean validateIsTrulyNew(P pojo) {
+    public boolean isAlreadyRecorded(P pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().EVENT_STATUS.getName(), pojo.getEventStatus()),
                 entry(getTable().EVENT_NAME.getName(), pojo.getEventName()),

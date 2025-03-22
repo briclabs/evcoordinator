@@ -70,7 +70,7 @@ public class ConfigurationController<P extends Configuration> extends ApiControl
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('evcoordinator:admin')")
     public Long create(@RequestBody P participant) throws HttpClientErrorException {
-        if (logic.validateIsTrulyNew(participant)) {
+        if (logic.isAlreadyRecorded(participant)) {
             throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
         }
         return logic.insertNew(participant).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
