@@ -5,10 +5,12 @@ import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
+import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -33,7 +35,12 @@ import org.springframework.web.client.HttpClientErrorException;
 @EnableMethodSecurity
 @Validated
 @RequestMapping(ApiController.V1 + "/event/info")
-public class EventInfoController<P extends EventInfo> extends ApiController<EventInfoLogic<P>> implements WriteController<P> {
+public class EventInfoController<P extends EventInfo> extends ApiController<
+        EventInfoRecord,
+        EventInfo,
+        net.briclabs.evcoordinator.generated.tables.EventInfo,
+        EventInfoLogic<P>
+    > implements WriteController<P> {
 
     @Autowired
     public EventInfoController(DSLContext dslContext) {
@@ -42,42 +49,42 @@ public class EventInfoController<P extends EventInfo> extends ApiController<Even
 
     @Override
     @GetMapping(value = "/{id}")
-    public EventInfo findById(@PathVariable("id") Long id) {
-        return logic.fetchById(id).orElse(null);
+    public ResponseEntity<EventInfo> findById(@PathVariable("id") Long id) {
+        return logic.fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping(value = "/latest")
-    public EventInfo findLatest() {
-        return logic.fetchLatest().orElse(null);
+    public ResponseEntity<EventInfo> findLatest() {
+        return logic.fetchLatest().map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping(path = "/search")
-    public ListWithCount<EventInfo> search(@RequestBody SearchRequest searchRequest) {
-        return logic.fetchByCriteria(
+    public ResponseEntity<ListWithCount<EventInfo>> search(@RequestBody SearchRequest searchRequest) {
+        return ResponseEntity.ok(logic.fetchByCriteria(
                 searchRequest.searchConfiguration().exactMatch(),
                 searchRequest.searchCriteria(),
                 searchRequest.searchConfiguration().sortColumn(),
                 searchRequest.searchConfiguration().sortAsc(),
                 searchRequest.searchConfiguration().offset(),
                 searchRequest.searchConfiguration().max()
-        );
+        ));
     }
 
     @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Long create(@RequestBody P eventInfo) throws HttpClientErrorException {
-        if (logic.isAlreadyRecorded(eventInfo)) {
-            throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
-        }
-        return logic.insertNew(eventInfo).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+    public ResponseEntity<Long> create(@RequestBody P eventInfo) throws HttpClientErrorException {
+        return logic.isAlreadyRecorded(eventInfo)
+                ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+                : logic.insertNew(eventInfo).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public int update(@RequestBody P updatedEventInfo) {
-        return logic.updateExisting(updatedEventInfo);
+    public ResponseEntity<Integer> update(@RequestBody P updatedEventInfo) {
+        int countOfRecordsUpdated = logic.updateExisting(updatedEventInfo);
+        return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 }

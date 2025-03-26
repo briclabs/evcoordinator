@@ -5,10 +5,12 @@ import net.briclabs.evcoordinator.ParticipantAssociationLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.ParticipantAssociation;
+import net.briclabs.evcoordinator.generated.tables.records.ParticipantAssociationRecord;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -33,7 +35,12 @@ import org.springframework.web.client.HttpClientErrorException;
 @EnableMethodSecurity
 @Validated
 @RequestMapping(ApiController.V1 + "/participant/assoc")
-public class ParticipantAssociationController<P extends ParticipantAssociation> extends ApiController<ParticipantAssociationLogic<P>> implements WriteController<P> {
+public class ParticipantAssociationController<P extends ParticipantAssociation> extends ApiController<
+        ParticipantAssociationRecord,
+        ParticipantAssociation,
+        net.briclabs.evcoordinator.generated.tables.ParticipantAssociation,
+        ParticipantAssociationLogic<P>
+    > implements WriteController<P> {
 
     @Autowired
     public ParticipantAssociationController(DSLContext dslContext) {
@@ -42,37 +49,37 @@ public class ParticipantAssociationController<P extends ParticipantAssociation> 
 
     @Override
     @GetMapping(value = "/{id}")
-    public ParticipantAssociation findById(@PathVariable("id") Long id) {
-        return logic.fetchById(id).orElse(null);
+    public ResponseEntity<ParticipantAssociation> findById(@PathVariable("id") Long id) {
+        return logic.fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping(path = "/search")
-    public ListWithCount<ParticipantAssociation> search(@RequestBody SearchRequest searchRequest) {
-        return logic.fetchByCriteria(
+    public ResponseEntity<ListWithCount<ParticipantAssociation>> search(@RequestBody SearchRequest searchRequest) {
+        return ResponseEntity.ok(logic.fetchByCriteria(
                 searchRequest.searchConfiguration().exactMatch(),
                 searchRequest.searchCriteria(),
                 searchRequest.searchConfiguration().sortColumn(),
                 searchRequest.searchConfiguration().sortAsc(),
                 searchRequest.searchConfiguration().offset(),
                 searchRequest.searchConfiguration().max()
-        );
+        ));
     }
 
     @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Long create(@RequestBody P participantAssociation) throws HttpClientErrorException {
-        if (logic.isAlreadyRecorded(participantAssociation)) {
-            throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
-        }
-        return logic.insertNew(participantAssociation).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+    public ResponseEntity<Long> create(@RequestBody P participantAssociation) throws HttpClientErrorException {
+        return logic.isAlreadyRecorded(participantAssociation)
+                ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+                : logic.insertNew(participantAssociation).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public int update(@RequestBody P updatedParticipantAssociation) {
-        return logic.updateExisting(updatedParticipantAssociation);
+    public ResponseEntity<Integer> update(@RequestBody P updatedParticipantAssociation) {
+        int countOfRecordsUpdated = logic.updateExisting(updatedParticipantAssociation);
+        return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 }

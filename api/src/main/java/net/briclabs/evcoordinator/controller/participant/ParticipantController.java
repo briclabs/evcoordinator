@@ -5,6 +5,7 @@ import net.briclabs.evcoordinator.ParticipantLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
+import net.briclabs.evcoordinator.generated.tables.records.ParticipantRecord;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
@@ -36,7 +37,12 @@ import org.springframework.web.client.HttpClientErrorException;
 @EnableMethodSecurity
 @Validated
 @RequestMapping(ApiController.V1 + "/participant")
-public class ParticipantController<P extends Participant> extends ApiController<ParticipantLogic<P>> implements WriteController<P> {
+public class ParticipantController<P extends Participant> extends ApiController<
+        ParticipantRecord,
+        Participant,
+        net.briclabs.evcoordinator.generated.tables.Participant,
+        ParticipantLogic<P>
+    > implements WriteController<P> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ParticipantController.class);
 
@@ -60,37 +66,37 @@ public class ParticipantController<P extends Participant> extends ApiController<
 
     @Override
     @GetMapping(value = "/{id}")
-    public Participant findById(@PathVariable("id") Long id) {
-        return logic.fetchById(id).orElse(null);
+    public ResponseEntity<Participant> findById(@PathVariable("id") Long id) {
+        return logic.fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping(path = "/search")
-    public ListWithCount<Participant> search(@RequestBody SearchRequest searchRequest) {
-        return logic.fetchByCriteria(
+    public ResponseEntity<ListWithCount<Participant>> search(@RequestBody SearchRequest searchRequest) {
+        return ResponseEntity.ok(logic.fetchByCriteria(
             searchRequest.searchConfiguration().exactMatch(),
             searchRequest.searchCriteria(),
             searchRequest.searchConfiguration().sortColumn(),
             searchRequest.searchConfiguration().sortAsc(),
             searchRequest.searchConfiguration().offset(),
             searchRequest.searchConfiguration().max()
-        );
+        ));
     }
 
     @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Long create(@RequestBody P participant) throws HttpClientErrorException {
-        if (logic.isAlreadyRecorded(participant)) {
-            throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
-        }
-        return logic.insertNew(participant).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+    public ResponseEntity<Long> create(@RequestBody P participant) throws HttpClientErrorException {
+        return logic.isAlreadyRecorded(participant)
+                ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+                : logic.insertNew(participant).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public int update(@RequestBody P updatedParticipant) {
-        return logic.updateExisting(updatedParticipant);
+    public ResponseEntity<Integer> update(@RequestBody P updatedParticipant) {
+        int countOfRecordsUpdated = logic.updateExisting(updatedParticipant);
+        return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 }

@@ -13,6 +13,9 @@ INSERT INTO participant_type (participant_type) VALUES ('VENDOR'), ('VENUE'), ('
 CREATE TABLE IF NOT EXISTS participant_association_type ( association_type text PRIMARY KEY );
 INSERT INTO participant_association_type (association_type) VALUES ('INVITEE'), ('CHILD'), ('PET');
 
+CREATE TABLE IF NOT EXISTS emergency_contact_association_type ( emergency_contact_association_type text PRIMARY KEY );
+INSERT INTO emergency_contact_association_type (emergency_contact_association_type) VALUES ('FRIEND'), ('FAMILY');
+
 CREATE TABLE IF NOT EXISTS event_status ( event_status_type text PRIMARY KEY );
 INSERT INTO event_status (event_status_type) VALUES ('CURRENT'), ('PAST'), ('CANCELLED');
 
@@ -51,6 +54,9 @@ CREATE TABLE IF NOT EXISTS participant (
    addr_zip int NOT NULL,
    addr_email character varying NOT NULL,
    phone_digits bigint NOT NULL,
+   emergency_contact_association_type text REFERENCES emergency_contact_association_type(emergency_contact_association_type) NOT NULL,
+   name_emergency character varying NOT NULL,
+   phone_emergency bigint NOT NULL,
    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
    PRIMARY KEY (id),
    UNIQUE (addr_email));

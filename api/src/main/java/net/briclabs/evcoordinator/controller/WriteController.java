@@ -1,6 +1,7 @@
 package net.briclabs.evcoordinator.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -19,7 +20,7 @@ public interface WriteController<P extends Serializable> {
      */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    Long create(@RequestBody P pojo) throws HttpClientErrorException;
+    ResponseEntity<Long> create(@RequestBody P pojo) throws HttpClientErrorException;
 
     /**
      * Updates an instance of this object.
@@ -28,6 +29,6 @@ public interface WriteController<P extends Serializable> {
      */
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    int update(@RequestBody P pojo);
+    ResponseEntity<Integer> update(@RequestBody P pojo);
 
 }

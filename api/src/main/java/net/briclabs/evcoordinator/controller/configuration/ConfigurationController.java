@@ -6,10 +6,12 @@ import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Configuration;
+import net.briclabs.evcoordinator.generated.tables.records.ConfigurationRecord;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.validation.annotation.Validated;
@@ -34,7 +36,12 @@ import org.springframework.web.client.HttpClientErrorException;
 @EnableMethodSecurity
 @Validated
 @RequestMapping(ApiController.V1 + "/configuration")
-public class ConfigurationController<P extends Configuration> extends ApiController<ConfigurationLogic<P>> implements WriteController<P> {
+public class ConfigurationController<P extends Configuration> extends ApiController<
+        ConfigurationRecord,
+        Configuration,
+        net.briclabs.evcoordinator.generated.tables.Configuration,
+        ConfigurationLogic<P>
+    > implements WriteController<P> {
 
     @Autowired
     public ConfigurationController(DSLContext dslContext) {
@@ -43,44 +50,44 @@ public class ConfigurationController<P extends Configuration> extends ApiControl
 
     @Override
     @GetMapping(value = "/{id}")
-    public Configuration findById(@PathVariable("id") Long id) {
-        return logic.fetchById(id).orElse(null);
+    public ResponseEntity<Configuration> findById(@PathVariable("id") Long id) {
+        return logic.fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping(path = "/search")
-    public ListWithCount<Configuration> search(@RequestBody SearchRequest searchRequest) {
-        return logic.fetchByCriteria(
+    public ResponseEntity<ListWithCount<Configuration>> search(@RequestBody SearchRequest searchRequest) {
+        return ResponseEntity.ok(logic.fetchByCriteria(
                 searchRequest.searchConfiguration().exactMatch(),
                 searchRequest.searchCriteria(),
                 searchRequest.searchConfiguration().sortColumn(),
                 searchRequest.searchConfiguration().sortAsc(),
                 searchRequest.searchConfiguration().offset(),
                 searchRequest.searchConfiguration().max()
-        );
+        ));
     }
 
     @GetMapping(value = "/latest")
-    public Configuration findLatest() {
-        return logic.fetchLatest().orElse(null);
+    public ResponseEntity<Configuration> findLatest() {
+        return logic.fetchLatest().map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAuthority('evcoordinator:admin')")
-    public Long create(@RequestBody P participant) throws HttpClientErrorException {
-        if (logic.isAlreadyRecorded(participant)) {
-            throw new HttpClientErrorException(HttpStatus.FORBIDDEN);
-        }
-        return logic.insertNew(participant).orElseThrow(() -> new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+    public ResponseEntity<Long> create(@RequestBody P configuration) throws HttpClientErrorException {
+        return logic.isAlreadyRecorded(configuration)
+                ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
+                : logic.insertNew(configuration).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasAuthority('evcoordinator:admin')")
-    public int update(@RequestBody P updatedParticipant) {
-        return logic.updateExisting(updatedParticipant);
+    public ResponseEntity<Integer> update(@RequestBody P updatedConfiguration) {
+        int countOfRecordsUpdated = logic.updateExisting(updatedConfiguration);
+        return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 }
