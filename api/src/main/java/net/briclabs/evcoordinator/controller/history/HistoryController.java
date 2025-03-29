@@ -3,6 +3,7 @@ package net.briclabs.evcoordinator.controller.history;
 import net.briclabs.evcoordinator.HistoryLogic;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.records.DataHistoryRecord;
 import net.briclabs.evcoordinator.model.SearchRequest;
@@ -34,7 +35,7 @@ public class HistoryController extends ApiController<
         DataHistory,
         net.briclabs.evcoordinator.generated.tables.DataHistory,
         HistoryLogic
-    > {
+    > implements ReadController<DataHistory> {
 // TODO this should only have objects created via TRIGGER...
 
     public static final Class<DataHistory> POJO = DataHistory.class;

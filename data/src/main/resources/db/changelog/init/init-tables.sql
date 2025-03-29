@@ -116,3 +116,17 @@ CREATE TABLE IF NOT EXISTS payment (
     instrument_type text REFERENCES payment_instrument(payment_instrument_type) NOT NULL,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
+
+CREATE OR REPLACE VIEW registration_with_labels AS
+    SELECT
+        r.*,
+        p.name_first as participant_name_first,
+        p.name_last as participant_name_last,
+        e.event_name,
+        e.event_title
+    FROM
+        registration r
+            JOIN
+        participant p ON r.participant_id = p.id
+            JOIN
+        event_info e ON r.event_info_id = e.id;

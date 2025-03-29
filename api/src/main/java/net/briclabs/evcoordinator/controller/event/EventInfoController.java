@@ -3,6 +3,7 @@ package net.briclabs.evcoordinator.controller.event;
 import net.briclabs.evcoordinator.EventInfoLogic;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
 import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
@@ -40,7 +41,7 @@ public class EventInfoController<P extends EventInfo> extends ApiController<
         EventInfo,
         net.briclabs.evcoordinator.generated.tables.EventInfo,
         EventInfoLogic<P>
-    > implements WriteController<P> {
+    > implements WriteController<P>, ReadController<EventInfo> {
 
     @Autowired
     public EventInfoController(DSLContext dslContext) {

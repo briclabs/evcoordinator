@@ -5,12 +5,10 @@ import org.jooq.DSLContext;
 import org.jooq.Field;
 import org.jooq.JSON;
 import org.jooq.JSONB;
-import org.jooq.Table;
 import org.jooq.TableField;
-import org.jooq.UpdatableRecord;
 import org.jooq.impl.DSL;
 import org.jooq.impl.TableImpl;
-import org.jooq.impl.UpdatableRecordImpl;
+import org.jooq.impl.TableRecordImpl;
 import org.jooq.tools.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +20,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public abstract class Logic<R extends UpdatableRecordImpl<R>, P extends Serializable, T extends TableImpl<R>> {
+public abstract class Logic<R extends TableRecordImpl<R>, P extends Serializable, T extends TableImpl<R>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Logic.class);
 
     final DSLContext jooq;
@@ -111,7 +109,7 @@ public abstract class Logic<R extends UpdatableRecordImpl<R>, P extends Serializ
         return new ListWithCount<>(query.fetchStreamInto(getRecordType()).toList(), count);
     }
 
-    private static <R extends UpdatableRecordImpl<R>> Map<String, String> stripOutUnknownFields(Map<String, String> searchCriteria, Table<R> table) {
+    private Map<String, String> stripOutUnknownFields(Map<String, String> searchCriteria, T table) {
         return searchCriteria.entrySet().stream()
                 .filter(entry -> !StringUtils.isBlank(entry.getValue().trim()) && table.fieldStream().anyMatch(field -> field.getName().equalsIgnoreCase(entry.getKey())))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
@@ -125,13 +123,13 @@ public abstract class Logic<R extends UpdatableRecordImpl<R>, P extends Serializ
         }
     }
 
-    private static <T, R extends UpdatableRecord<R>> Optional<Condition> addPossibleCondition(Field<T> field, String key, String value, boolean exactCriteria) {
+    private static <T> Optional<Condition> addPossibleCondition(Field<T> field, String key, String value, boolean exactCriteria) {
         return field.getName().equalsIgnoreCase(key)
                 ? Optional.of(getContainsOrEqualsWithJsonBHandling(field, value, exactCriteria))
                 : Optional.empty();
     }
 
-    private static <T, R extends UpdatableRecord<R>> Condition getContainsOrEqualsWithJsonBHandling(Field<T> field, String value, boolean exactCriteria) {
+    private static <T> Condition getContainsOrEqualsWithJsonBHandling(Field<T> field, String value, boolean exactCriteria) {
         if (field.getDataType().getType().equals(JSON.class)) {
             return exactCriteria ? field.cast(JSONB.class).eq(JSONB.valueOf(value)) : field.cast(JSONB.class).containsIgnoreCase(JSONB.valueOf(value));
         } else {

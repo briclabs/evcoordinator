@@ -3,6 +3,7 @@ package net.briclabs.evcoordinator.controller.payment;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.PaymentLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Payment;
 import net.briclabs.evcoordinator.generated.tables.records.PaymentRecord;
@@ -40,7 +41,7 @@ public class PaymentController<P extends Payment> extends ApiController<
         Payment,
         net.briclabs.evcoordinator.generated.tables.Payment,
         PaymentLogic<P>
-    > implements WriteController<P> {
+    > implements WriteController<P>, ReadController<Payment> {
 
     @Autowired
     public PaymentController(DSLContext dslContext) {

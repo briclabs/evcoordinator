@@ -4,6 +4,7 @@ package net.briclabs.evcoordinator.controller.configuration;
 import net.briclabs.evcoordinator.ConfigurationLogic;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Configuration;
 import net.briclabs.evcoordinator.generated.tables.records.ConfigurationRecord;
@@ -41,7 +42,7 @@ public class ConfigurationController<P extends Configuration> extends ApiControl
         Configuration,
         net.briclabs.evcoordinator.generated.tables.Configuration,
         ConfigurationLogic<P>
-    > implements WriteController<P> {
+    > implements WriteController<P>, ReadController<Configuration> {
 
     @Autowired
     public ConfigurationController(DSLContext dslContext) {

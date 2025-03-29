@@ -3,6 +3,7 @@ package net.briclabs.evcoordinator.controller.participant;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.ParticipantLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.generated.tables.records.ParticipantRecord;
@@ -42,7 +43,7 @@ public class ParticipantController<P extends Participant> extends ApiController<
         Participant,
         net.briclabs.evcoordinator.generated.tables.Participant,
         ParticipantLogic<P>
-    > implements WriteController<P> {
+    > implements WriteController<P>, ReadController<Participant> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ParticipantController.class);
 

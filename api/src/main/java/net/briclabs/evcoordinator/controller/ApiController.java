@@ -12,7 +12,7 @@ public abstract class ApiController<
         P extends Serializable,
         T extends TableImpl<R>,
         L extends Logic<R, P, T>
-    > implements ReadController<P> {
+    > {
 
     public static final String V1 = "v1";
 

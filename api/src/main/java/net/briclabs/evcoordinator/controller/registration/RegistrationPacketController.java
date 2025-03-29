@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 )
 @EnableMethodSecurity
 @Validated
-@RequestMapping(ApiController.V1 + "/registration")
+@RequestMapping(ApiController.V1 + "/registrationPacket")
 public class RegistrationPacketController {
 
     private final RegistrationPacketLogic<RegistrationPacket> logic;
