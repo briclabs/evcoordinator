@@ -3,6 +3,7 @@ package net.briclabs.evcoordinator.controller.registration;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.RegistrationLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.DeleteEndpoint;
 import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
@@ -16,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,7 +44,7 @@ public class RegistrationController<P extends Registration> extends ApiControlle
         Registration,
         net.briclabs.evcoordinator.generated.tables.Registration,
         RegistrationLogic<P>
-    > implements WriteController<P>, ReadController<RegistrationWithLabels> {
+    > implements WriteController<P>, ReadController<RegistrationWithLabels>, DeleteEndpoint {
 
     @Autowired
     public RegistrationController(DSLContext dslContext) {
@@ -84,5 +86,13 @@ public class RegistrationController<P extends Registration> extends ApiControlle
     public ResponseEntity<Integer> update(@RequestBody P updatedRegistration) {
         int countOfRecordsUpdated = logic.updateExisting(updatedRegistration);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
+    }
+
+    @Override
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
+        logic.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

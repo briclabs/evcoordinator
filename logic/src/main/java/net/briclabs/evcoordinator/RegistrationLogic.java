@@ -1,5 +1,6 @@
 package net.briclabs.evcoordinator;
 
+import net.briclabs.evcoordinator.generated.tables.Guest;
 import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
 import net.briclabs.evcoordinator.generated.tables.pojos.RegistrationWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.GuestRecord;
@@ -18,7 +19,7 @@ import static net.briclabs.evcoordinator.generated.Tables.GUEST;
 import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION;
 import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION_WITH_LABELS;
 
-public class RegistrationLogic<P extends Registration> extends Logic<RegistrationRecord, Registration, net.briclabs.evcoordinator.generated.tables.Registration> implements WriteLogic<P> {
+public class RegistrationLogic<P extends Registration> extends Logic<RegistrationRecord, Registration, net.briclabs.evcoordinator.generated.tables.Registration> implements WriteLogic<P>, DeletableRecord {
     private static final Logger LOGGER = LoggerFactory.getLogger(RegistrationLogic.class);
 
     private final RegistrationWithLabelsLogic registrationWithLabelsLogic;
@@ -76,6 +77,14 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
         }
         LOGGER.warn("Tried to update registration with a null id: {}", update);
         return 0;
+    }
+
+    @Override
+    public void delete(Long id) {
+        var guestIdsToDelete = jooq.select(Guest.GUEST.ID).from(Guest.GUEST).where(Guest.GUEST.REGISTRATION_ID.eq(id)).fetchInto(Long.class);
+        jooq.deleteFrom(Guest.GUEST).where(Guest.GUEST.ID.in(guestIdsToDelete)).execute();
+
+        jooq.deleteFrom(getTable()).where(getTable().ID.eq(id)).execute();
     }
 
     private void handleGuestUpdates(long registrationId, long newParticipantId) {

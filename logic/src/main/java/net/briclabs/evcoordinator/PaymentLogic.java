@@ -11,7 +11,7 @@ import java.util.Optional;
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.Payment.PAYMENT;
 
-public class PaymentLogic<P extends Payment> extends Logic<PaymentRecord, Payment, net.briclabs.evcoordinator.generated.tables.Payment> implements WriteLogic<P> {
+public class PaymentLogic<P extends Payment> extends Logic<PaymentRecord, Payment, net.briclabs.evcoordinator.generated.tables.Payment> implements WriteLogic<P>, DeletableRecord {
     public PaymentLogic(DSLContext jooq) {
         super(jooq, Payment.class, PAYMENT, PAYMENT.ID);
     }
@@ -66,5 +66,10 @@ public class PaymentLogic<P extends Payment> extends Logic<PaymentRecord, Paymen
                         .or(getTable().AMOUNT.notEqual(update.getAmount()))
                         .or(getTable().EVENT_INFO_ID.notEqual(update.getEventInfoId()))
                 ).execute();
+    }
+
+    @Override
+    public void delete(Long id) {
+        jooq.deleteFrom(getTable()).where(getTable().ID.eq(id)).execute();
     }
 }

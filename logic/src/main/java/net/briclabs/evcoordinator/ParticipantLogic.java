@@ -12,6 +12,16 @@ import java.util.Optional;
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT;
 
+/**
+ * ParticipantLogic is a class that provides logic and database interaction
+ * for handling {@code Participant} entities. This class extends the generic
+ * {@code Logic} class to implement operations specific to Participant records
+ * in the database and adheres to the {@code WriteLogic} interface.
+ *
+ * @param <P> The Participant type parameter extending the {@code Participant} class.
+ *
+ * @implNote The Participant object in the data model cannot be deleted because of the impact this would have to the History table.
+ */
 public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRecord, Participant, net.briclabs.evcoordinator.generated.tables.Participant> implements WriteLogic<P> {
     public ParticipantLogic(DSLContext jooq) {
         super(jooq, Participant.class, PARTICIPANT, PARTICIPANT.ID);

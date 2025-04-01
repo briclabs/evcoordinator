@@ -10,8 +10,11 @@ import java.util.Optional;
 
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.EventInfo.EVENT_INFO;
+import static net.briclabs.evcoordinator.generated.tables.Guest.GUEST;
+import static net.briclabs.evcoordinator.generated.tables.Payment.PAYMENT;
+import static net.briclabs.evcoordinator.generated.tables.Registration.REGISTRATION;
 
-public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, EventInfo, net.briclabs.evcoordinator.generated.tables.EventInfo> implements WriteLogic<P> {
+public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, EventInfo, net.briclabs.evcoordinator.generated.tables.EventInfo> implements WriteLogic<P>, DeletableRecord {
     public EventInfoLogic(DSLContext jooq) {
         super(jooq, EventInfo.class, EVENT_INFO, EVENT_INFO.ID);
     }
@@ -72,5 +75,19 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
                     .or(getTable().DATE_START.notEqual(update.getDateStart()))
                     .or(getTable().DATE_END.notEqual(update.getDateEnd()))
                 ).execute();
+    }
+
+    @Override
+    public void delete(Long id) {
+        var paymentsToDelete = jooq.select(PAYMENT.ID).from(PAYMENT).where(PAYMENT.EVENT_INFO_ID.eq(id)).fetchInto(Long.class);
+        jooq.deleteFrom(PAYMENT).where(PAYMENT.ID.in(paymentsToDelete)).execute();
+
+        var registrationIdsToDelete = jooq.select(REGISTRATION.ID).from(REGISTRATION).where(REGISTRATION.EVENT_INFO_ID.eq(id)).fetchInto(Long.class);
+        var guestIdsToDelete = jooq.select(GUEST.ID).from(GUEST).where(GUEST.REGISTRATION_ID.in(registrationIdsToDelete)).fetchInto(Long.class);
+
+        jooq.deleteFrom(GUEST).where(GUEST.ID.in(guestIdsToDelete)).execute();
+        jooq.deleteFrom(REGISTRATION).where(REGISTRATION.ID.in(registrationIdsToDelete)).execute();
+
+        jooq.deleteFrom(getTable()).where(getTable().ID.eq(id)).execute();
     }
 }

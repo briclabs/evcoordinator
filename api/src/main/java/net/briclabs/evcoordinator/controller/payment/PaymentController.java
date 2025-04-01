@@ -3,6 +3,7 @@ package net.briclabs.evcoordinator.controller.payment;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.PaymentLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.controller.DeleteEndpoint;
 import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Payment;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,7 +43,7 @@ public class PaymentController<P extends Payment> extends ApiController<
         Payment,
         net.briclabs.evcoordinator.generated.tables.Payment,
         PaymentLogic<P>
-    > implements WriteController<P>, ReadController<Payment> {
+    > implements WriteController<P>, ReadController<Payment>, DeleteEndpoint {
 
     @Autowired
     public PaymentController(DSLContext dslContext) {
@@ -82,5 +84,13 @@ public class PaymentController<P extends Payment> extends ApiController<
     public ResponseEntity<Integer> update(@RequestBody P updatedPayment) {
         int countOfRecordsUpdated = logic.updateExisting(updatedPayment);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
+    }
+
+    @Override
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
+        logic.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

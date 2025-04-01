@@ -13,7 +13,7 @@ import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.Guest.GUEST;
 import static net.briclabs.evcoordinator.generated.tables.GuestWithLabels.GUEST_WITH_LABELS;
 
-public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.briclabs.evcoordinator.generated.tables.Guest> implements WriteLogic<P> {
+public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.briclabs.evcoordinator.generated.tables.Guest> implements WriteLogic<P>, DeletableRecord {
 
     private final GuestLogic.GuestWithLabelsLogic guestWithLabelsLogic;
 
@@ -68,6 +68,11 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
                     .or(getTable().RAW_GUEST_NAME.notEqual(update.getRawGuestName()))
                     .or(getTable().RELATIONSHIP.notEqual(update.getRelationship()))
                 ).execute();
+    }
+
+    @Override
+    public void delete(Long id) {
+        jooq.deleteFrom(getTable()).where(getTable().ID.eq(id)).execute();
     }
 
     public static class GuestWithLabelsLogic extends Logic<GuestWithLabelsRecord, GuestWithLabels, net.briclabs.evcoordinator.generated.tables.GuestWithLabels> {
