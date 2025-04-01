@@ -55,7 +55,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                 entry(getTable().ADDR_EMAIL.getName(), pojo.getAddrEmail()),
                 entry(getTable().NAME_EMERGENCY.getName(), pojo.getNameEmergency()),
                 entry(getTable().PHONE_EMERGENCY.getName(), pojo.getPhoneEmergency().toString()),
-                entry(getTable().EMERGENCY_CONTACT_ASSOCIATION_TYPE.getName(), pojo.getEmergencyContactAssociationType()),
+                entry(getTable().EMERGENCY_CONTACT_RELATIONSHIP_TYPE.getName(), pojo.getEmergencyContactRelationshipType()),
                 entry(getTable().PHONE_DIGITS.getName(), pojo.getPhoneDigits().toString()));
         return fetchByCriteria(true, criteria, getIdColumn().getName(), false, 0, 1).count() > 0;
     }
@@ -78,7 +78,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                 .set(getTable().ADDR_EMAIL, pojo.getAddrEmail())
                 .set(getTable().NAME_EMERGENCY, pojo.getNameEmergency())
                 .set(getTable().PHONE_EMERGENCY, pojo.getPhoneEmergency())
-                .set(getTable().EMERGENCY_CONTACT_ASSOCIATION_TYPE, pojo.getEmergencyContactAssociationType())
+                .set(getTable().EMERGENCY_CONTACT_RELATIONSHIP_TYPE, pojo.getEmergencyContactRelationshipType())
                 .set(getTable().PHONE_DIGITS, pojo.getPhoneDigits())
                 .returning(getIdColumn())
                 .fetchOptional()
@@ -102,7 +102,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                 .set(getTable().ADDR_EMAIL, update.getAddrEmail())
                 .set(getTable().NAME_EMERGENCY, update.getNameEmergency())
                 .set(getTable().PHONE_EMERGENCY, update.getPhoneEmergency())
-                .set(getTable().EMERGENCY_CONTACT_ASSOCIATION_TYPE, update.getEmergencyContactAssociationType())
+                .set(getTable().EMERGENCY_CONTACT_RELATIONSHIP_TYPE, update.getEmergencyContactRelationshipType())
                 .set(getTable().PHONE_DIGITS, update.getPhoneDigits())
                 .where(getIdColumn().eq(update.getId()))
                 .and(
@@ -120,7 +120,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                         .or(getTable().ADDR_EMAIL.notEqual(update.getAddrEmail()))
                         .or(getTable().NAME_EMERGENCY.notEqual(update.getNameEmergency()))
                         .or(getTable().PHONE_EMERGENCY.notEqual(update.getPhoneEmergency()))
-                        .or(getTable().EMERGENCY_CONTACT_ASSOCIATION_TYPE.notEqual(update.getEmergencyContactAssociationType()))
+                        .or(getTable().EMERGENCY_CONTACT_RELATIONSHIP_TYPE.notEqual(update.getEmergencyContactRelationshipType()))
                         .or(getTable().PHONE_DIGITS.notEqual(update.getPhoneDigits()))
                 ).execute();
     }

@@ -10,11 +10,11 @@ INSERT INTO data_history_type (history_type) VALUES ('UPDATED');
 CREATE TABLE IF NOT EXISTS participant_type ( participant_type text PRIMARY KEY );
 INSERT INTO participant_type (participant_type) VALUES ('VENDOR'), ('VENUE'), ('ATTENDEE');
 
-CREATE TABLE IF NOT EXISTS participant_association_type ( association_type text PRIMARY KEY );
-INSERT INTO participant_association_type (association_type) VALUES ('INVITEE'), ('CHILD'), ('PET');
+CREATE TABLE IF NOT EXISTS guest_relationship_type ( guest_relationship_type text PRIMARY KEY );
+INSERT INTO guest_relationship_type (guest_relationship_type) VALUES ('ADULT'), ('CHILD'), ('PET');
 
-CREATE TABLE IF NOT EXISTS emergency_contact_association_type ( emergency_contact_association_type text PRIMARY KEY );
-INSERT INTO emergency_contact_association_type (emergency_contact_association_type) VALUES ('FRIEND'), ('FAMILY');
+CREATE TABLE IF NOT EXISTS emergency_contact_relationship_type ( emergency_contact_relationship_type text PRIMARY KEY );
+INSERT INTO emergency_contact_relationship_type (emergency_contact_relationship_type) VALUES ('FRIEND'), ('FAMILY');
 
 CREATE TABLE IF NOT EXISTS event_status ( event_status_type text PRIMARY KEY );
 INSERT INTO event_status (event_status_type) VALUES ('CURRENT'), ('PAST'), ('CANCELLED');
@@ -54,21 +54,12 @@ CREATE TABLE IF NOT EXISTS participant (
    addr_zip int NOT NULL,
    addr_email character varying NOT NULL,
    phone_digits bigint NOT NULL,
-   emergency_contact_association_type text REFERENCES emergency_contact_association_type(emergency_contact_association_type) NOT NULL,
+   emergency_contact_relationship_type text REFERENCES emergency_contact_relationship_type(emergency_contact_relationship_type) NOT NULL,
    name_emergency character varying NOT NULL,
    phone_emergency bigint NOT NULL,
    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
    PRIMARY KEY (id),
    UNIQUE (addr_email));
-
-CREATE TABLE IF NOT EXISTS participant_association (
-    id bigint GENERATED ALWAYS AS IDENTITY,
-    self bigint REFERENCES participant(id) NOT NULL,
-    raw_associate_name text NOT NULL,
-    associate bigint REFERENCES participant(id),
-    association text REFERENCES participant_association_type(association_type) NOT NULL,
-    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
-    PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS data_history (
     id bigint GENERATED ALWAYS AS IDENTITY,
@@ -99,10 +90,14 @@ CREATE TABLE IF NOT EXISTS registration (
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
-CREATE TABLE IF NOT EXISTS registration_participant_association (
+CREATE TABLE IF NOT EXISTS guest (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    participant_association_id bigint REFERENCES participant_association(id) NOT NULL,
+    invitee_profile_id bigint REFERENCES participant(id) NOT NULL,
     registration_id bigint REFERENCES registration(id) NOT NULL,
+    raw_guest_name text NOT NULL,
+    guest_profile_id bigint REFERENCES participant(id),
+    relationship text REFERENCES guest_relationship_type(guest_relationship_type) NOT NULL,
+    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
 CREATE TABLE IF NOT EXISTS payment (
@@ -120,8 +115,8 @@ CREATE TABLE IF NOT EXISTS payment (
 CREATE OR REPLACE VIEW registration_with_labels AS
     SELECT
         r.*,
-        p.name_first as participant_name_first,
-        p.name_last as participant_name_last,
+        p.name_first AS participant_name_first,
+        p.name_last AS participant_name_last,
         e.event_name,
         e.event_title
     FROM
@@ -130,3 +125,30 @@ CREATE OR REPLACE VIEW registration_with_labels AS
         participant p ON r.participant_id = p.id
             JOIN
         event_info e ON r.event_info_id = e.id;
+
+CREATE OR REPLACE VIEW guest_with_labels AS
+    SELECT
+        g.id,
+        g.registration_id,
+        r.event_info_id,
+        e.event_name,
+        e.event_title,
+        g.raw_guest_name,
+        g.guest_profile_id,
+        gp.name_first AS guest_name_first,
+        gp.name_last AS guest_name_last,
+        g.invitee_profile_id AS invitee_profile_id,
+        i.name_first AS invitee_first_name,
+        i.name_last AS invitee_last_name,
+        g.relationship,
+        g.time_recorded
+    FROM
+        guest g
+            JOIN
+        registration r ON g.registration_id = r.id
+            JOIN
+        event_info e ON r.event_info_id = e.id
+            JOIN
+        participant i ON g.invitee_profile_id = i.id
+            LEFT JOIN
+        participant gp ON g.guest_profile_id = gp.id;

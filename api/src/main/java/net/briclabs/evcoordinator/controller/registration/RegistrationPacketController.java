@@ -71,7 +71,7 @@ public class RegistrationPacketController {
      */
     @GetMapping(value = "/byParticipantId/{id}")
     public ResponseEntity<RegistrationPacket> findByParticipantId(@PathVariable("id") Long id) {
-        return logic.fetchRegistrationPacketParticipantId(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return logic.fetchRegistrationPacketByParticipantId(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     /**

@@ -1,12 +1,13 @@
 package net.briclabs.evcoordinator.controller.participant;
 
+import net.briclabs.evcoordinator.GuestLogic;
 import net.briclabs.evcoordinator.ListWithCount;
-import net.briclabs.evcoordinator.ParticipantAssociationLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
-import net.briclabs.evcoordinator.generated.tables.pojos.ParticipantAssociation;
-import net.briclabs.evcoordinator.generated.tables.records.ParticipantAssociationRecord;
+import net.briclabs.evcoordinator.generated.tables.pojos.Guest;
+import net.briclabs.evcoordinator.generated.tables.pojos.GuestWithLabels;
+import net.briclabs.evcoordinator.generated.tables.records.GuestRecord;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,52 +36,53 @@ import org.springframework.web.client.HttpClientErrorException;
 )
 @EnableMethodSecurity
 @Validated
-@RequestMapping(ApiController.V1 + "/participant/assoc")
-public class ParticipantAssociationController<P extends ParticipantAssociation> extends ApiController<
-        ParticipantAssociationRecord,
-        ParticipantAssociation,
-        net.briclabs.evcoordinator.generated.tables.ParticipantAssociation,
-        ParticipantAssociationLogic<P>
-    > implements WriteController<P>, ReadController<ParticipantAssociation> {
+@RequestMapping(ApiController.V1 + "/guest")
+public class GuestController<P extends Guest> extends ApiController<
+        GuestRecord,
+        Guest,
+        net.briclabs.evcoordinator.generated.tables.Guest,
+        GuestLogic<P>
+    > implements WriteController<P>, ReadController<GuestWithLabels> {
 
     @Autowired
-    public ParticipantAssociationController(DSLContext dslContext) {
-        super(dslContext, new ParticipantAssociationLogic<>(dslContext));
+    public GuestController(DSLContext dslContext) {
+        super(dslContext, new GuestLogic<>(dslContext));
     }
 
     @Override
     @GetMapping(value = "/{id}")
-    public ResponseEntity<ParticipantAssociation> findById(@PathVariable("id") Long id) {
-        return logic.fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<GuestWithLabels> findById(@PathVariable("id") Long id) {
+        return logic.getGuestWithLabelsLogic().fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping(path = "/search")
-    public ResponseEntity<ListWithCount<ParticipantAssociation>> search(@RequestBody SearchRequest searchRequest) {
-        return ResponseEntity.ok(logic.fetchByCriteria(
+    public ResponseEntity<ListWithCount<GuestWithLabels>> search(@RequestBody SearchRequest searchRequest) {
+        ListWithCount<GuestWithLabels> rawMatchingRegistrations = logic.getGuestWithLabelsLogic().fetchByCriteria(
                 searchRequest.searchConfiguration().exactMatch(),
                 searchRequest.searchCriteria(),
                 searchRequest.searchConfiguration().sortColumn(),
                 searchRequest.searchConfiguration().sortAsc(),
                 searchRequest.searchConfiguration().offset(),
                 searchRequest.searchConfiguration().max()
-        ));
+        );
+        return ResponseEntity.ok(rawMatchingRegistrations);
     }
 
     @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<Long> create(@RequestBody P participantAssociation) throws HttpClientErrorException {
-        return logic.isAlreadyRecorded(participantAssociation)
+    public ResponseEntity<Long> create(@RequestBody P guest) throws HttpClientErrorException {
+        return logic.isAlreadyRecorded(guest)
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(participantAssociation).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.insertNew(guest).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<Integer> update(@RequestBody P updatedParticipantAssociation) {
-        int countOfRecordsUpdated = logic.updateExisting(updatedParticipantAssociation);
+    public ResponseEntity<Integer> update(@RequestBody P guest) {
+        int countOfRecordsUpdated = logic.updateExisting(guest);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 }

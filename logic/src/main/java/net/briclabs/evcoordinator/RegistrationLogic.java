@@ -2,7 +2,7 @@ package net.briclabs.evcoordinator;
 
 import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
 import net.briclabs.evcoordinator.generated.tables.pojos.RegistrationWithLabels;
-import net.briclabs.evcoordinator.generated.tables.records.RegistrationParticipantAssociationRecord;
+import net.briclabs.evcoordinator.generated.tables.records.GuestRecord;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationRecord;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationWithLabelsRecord;
 import org.jooq.DSLContext;
@@ -14,9 +14,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Map.entry;
-import static net.briclabs.evcoordinator.generated.Tables.PARTICIPANT_ASSOCIATION;
+import static net.briclabs.evcoordinator.generated.Tables.GUEST;
 import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION;
-import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION_PARTICIPANT_ASSOCIATION;
 import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION_WITH_LABELS;
 
 public class RegistrationLogic<P extends Registration> extends Logic<RegistrationRecord, Registration, net.briclabs.evcoordinator.generated.tables.Registration> implements WriteLogic<P> {
@@ -59,7 +58,7 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
     @Override
     public int updateExisting(P update) {
         if (update.getId() != null) {
-            handleRegistrationParticipantAssociationUpdates(update.getId(), update.getParticipantId());
+            handleGuestUpdates(update.getId(), update.getParticipantId());
             return jooq
                     .update(getTable())
                     .set(getTable().EVENT_INFO_ID, update.getEventInfoId())
@@ -79,28 +78,24 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
         return 0;
     }
 
-    private void handleRegistrationParticipantAssociationUpdates(long registrationId, long newParticipantId) {
-        var registrationParticipantAssociationList = fetchParticipantAssociationsForThisRegistration(registrationId);
-
-        if (!registrationParticipantAssociationList.isEmpty()) {
-            for (var registrationParticipantAssociation : registrationParticipantAssociationList) {
-                updateRelevantParticipantAssociationForThisEvent(newParticipantId, registrationParticipantAssociation.getParticipantAssociationId());
-            }
-        }
+    private void handleGuestUpdates(long registrationId, long newParticipantId) {
+        fetchGuestsForThisRegistration(registrationId).stream()
+                .filter(guest -> guest.getId() != null)
+                .forEach(guest -> updateRelevantGuestsForThisEvent(newParticipantId, guest.getId()));
     }
 
-    private Result<RegistrationParticipantAssociationRecord> fetchParticipantAssociationsForThisRegistration(long registrationId) {
+    private Result<GuestRecord> fetchGuestsForThisRegistration(long registrationId) {
         return jooq
-                .selectFrom(REGISTRATION_PARTICIPANT_ASSOCIATION)
-                .where(REGISTRATION_PARTICIPANT_ASSOCIATION.REGISTRATION_ID.eq(registrationId))
+                .selectFrom(GUEST)
+                .where(GUEST.REGISTRATION_ID.eq(registrationId))
                 .fetch();
     }
 
-    private void updateRelevantParticipantAssociationForThisEvent(long newParticipantId, long registrationParticipantAssociationId) {
+    private void updateRelevantGuestsForThisEvent(long newParticipantId, long guestId) {
         jooq
-            .update(PARTICIPANT_ASSOCIATION)
-            .set(PARTICIPANT_ASSOCIATION.SELF, newParticipantId)
-            .where(PARTICIPANT_ASSOCIATION.ID.eq(registrationParticipantAssociationId))
+            .update(GUEST)
+            .set(GUEST.INVITEE_PROFILE_ID, newParticipantId)
+            .where(GUEST.ID.eq(guestId))
             .execute();
     }
 

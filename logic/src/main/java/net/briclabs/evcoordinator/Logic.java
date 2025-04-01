@@ -97,16 +97,16 @@ public abstract class Logic<R extends TableRecordImpl<R>, P extends Serializable
                 .where(whereClause)
                 .orderBy(sortAscending
                         ? resolveField(sortColumn, getIdColumn()).asc()
-                        : resolveField(sortColumn, getIdColumn()).desc())
-                .limit(offset, max);
-        LOGGER.info("Query SQL: {}", query.getQuery().getSQL());
+                        : resolveField(sortColumn, getIdColumn()).desc());
+        var queryWithLimit = max > 0 ? query.limit(offset, max) : query.offset(offset);
+        LOGGER.info("Query SQL: {}", queryWithLimit.getQuery().getSQL());
         int count = jooq
                 .selectCount()
                 .from(getTable())
                 .where(whereClause)
                 .fetchOptional(0, Integer.class)
                 .orElse(0);
-        return new ListWithCount<>(query.fetchStreamInto(getRecordType()).toList(), count);
+        return new ListWithCount<>(queryWithLimit.fetchStreamInto(getRecordType()).toList(), count);
     }
 
     private Map<String, String> stripOutUnknownFields(Map<String, String> searchCriteria, T table) {
