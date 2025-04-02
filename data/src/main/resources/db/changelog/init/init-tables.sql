@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS participant (
    phone_emergency bigint NOT NULL,
    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
    PRIMARY KEY (id),
-   UNIQUE (addr_email));
+   UNIQUE (addr_email, participant_type));
 
 CREATE TABLE IF NOT EXISTS data_history (
     id bigint GENERATED ALWAYS AS IDENTITY,

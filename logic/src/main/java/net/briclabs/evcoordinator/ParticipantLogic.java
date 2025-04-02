@@ -48,6 +48,21 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                 1);
     }
 
+    /**
+     * Checks if the email address / participant type combo is already recorded in the database.
+     *
+     * @param emailAddressToSearchFor The email address to check for existence.
+     * @param participantTypeToSearchFor The participant type to check for existence.
+     * @return true if the email address / participant type combo is already recorded, false otherwise.
+     */
+    public boolean isEmailAddressAlreadyRecorded(String emailAddressToSearchFor, String participantTypeToSearchFor) {
+        Map<String, String> criteria = Map.ofEntries(
+                entry(getTable().ADDR_EMAIL.getName(), emailAddressToSearchFor),
+                entry(getTable().PARTICIPANT_TYPE.getName(), participantTypeToSearchFor)
+        );
+        return fetchByCriteria(false, criteria, getIdColumn().getName(), false, 0, 1).count() > 0;
+    }
+
     @Override
     public boolean isAlreadyRecorded(P pojo) {
         Map<String, String> criteria = Map.ofEntries(

@@ -88,7 +88,7 @@ public class ParticipantController<P extends Participant> extends ApiController<
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ResponseEntity<Long> create(@RequestBody P participant) throws HttpClientErrorException {
-        return logic.isAlreadyRecorded(participant)
+        return logic.isAlreadyRecorded(participant) || logic.isEmailAddressAlreadyRecorded(participant.getAddrEmail(), participant.getParticipantType())
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
                 : logic.insertNew(participant).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
