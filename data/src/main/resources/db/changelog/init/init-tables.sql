@@ -152,3 +152,21 @@ CREATE OR REPLACE VIEW guest_with_labels AS
         participant i ON g.invitee_profile_id = i.id
             LEFT JOIN
         participant gp ON g.guest_profile_id = gp.id;
+
+CREATE OR REPLACE VIEW payment_with_labels AS
+    SELECT
+        p.*,
+        e.event_name,
+        e.event_title,
+        pa.name_first AS actor_name_first,
+        pa.name_last AS actor_name_last,
+        pr.name_first AS recipient_name_first,
+        pr.name_last AS recipient_name_last
+    FROM
+        payment p
+            JOIN
+        event_info e ON p.event_info_id = e.id
+            JOIN
+        participant pa ON p.actor_id = pa.id
+            JOIN
+        participant pr ON p.recipient_id = pr.id;

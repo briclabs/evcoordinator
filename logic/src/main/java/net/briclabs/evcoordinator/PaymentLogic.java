@@ -2,7 +2,9 @@ package net.briclabs.evcoordinator;
 
 
 import net.briclabs.evcoordinator.generated.tables.pojos.Payment;
+import net.briclabs.evcoordinator.generated.tables.pojos.PaymentWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.PaymentRecord;
+import net.briclabs.evcoordinator.generated.tables.records.PaymentWithLabelsRecord;
 import org.jooq.DSLContext;
 
 import java.util.Map;
@@ -10,10 +12,18 @@ import java.util.Optional;
 
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.Payment.PAYMENT;
+import static net.briclabs.evcoordinator.generated.tables.PaymentWithLabels.PAYMENT_WITH_LABELS;
 
 public class PaymentLogic<P extends Payment> extends Logic<PaymentRecord, Payment, net.briclabs.evcoordinator.generated.tables.Payment> implements WriteLogic<P>, DeletableRecord {
+    private final PaymentWithLabelsLogic paymentWithLabelsLogic;
+
     public PaymentLogic(DSLContext jooq) {
         super(jooq, Payment.class, PAYMENT, PAYMENT.ID);
+        this.paymentWithLabelsLogic = new PaymentWithLabelsLogic(jooq);
+    }
+
+    public PaymentWithLabelsLogic getPaymentWithLabelsLogic() {
+        return paymentWithLabelsLogic;
     }
 
     @Override
@@ -71,5 +81,11 @@ public class PaymentLogic<P extends Payment> extends Logic<PaymentRecord, Paymen
     @Override
     public void delete(Long id) {
         jooq.deleteFrom(getTable()).where(getTable().ID.eq(id)).execute();
+    }
+
+    public static class PaymentWithLabelsLogic extends Logic<PaymentWithLabelsRecord, PaymentWithLabels, net.briclabs.evcoordinator.generated.tables.PaymentWithLabels> {
+        public PaymentWithLabelsLogic(DSLContext jooq) {
+            super(jooq, PaymentWithLabels.class, PAYMENT_WITH_LABELS, PAYMENT_WITH_LABELS.ID);
+        }
     }
 }

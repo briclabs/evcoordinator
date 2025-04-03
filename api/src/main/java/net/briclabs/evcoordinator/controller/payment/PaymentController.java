@@ -7,6 +7,7 @@ import net.briclabs.evcoordinator.controller.DeleteEndpoint;
 import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Payment;
+import net.briclabs.evcoordinator.generated.tables.pojos.PaymentWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.PaymentRecord;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
@@ -43,7 +44,7 @@ public class PaymentController<P extends Payment> extends ApiController<
         Payment,
         net.briclabs.evcoordinator.generated.tables.Payment,
         PaymentLogic<P>
-    > implements WriteController<P>, ReadController<Payment>, DeleteEndpoint {
+    > implements WriteController<P>, ReadController<PaymentWithLabels>, DeleteEndpoint {
 
     @Autowired
     public PaymentController(DSLContext dslContext) {
@@ -52,14 +53,14 @@ public class PaymentController<P extends Payment> extends ApiController<
 
     @Override
     @GetMapping(value = "/{id}")
-    public ResponseEntity<Payment> findById(@PathVariable("id") Long id) {
-        return logic.fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<PaymentWithLabels> findById(@PathVariable("id") Long id) {
+        return logic.getPaymentWithLabelsLogic().fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping(path = "/search")
-    public ResponseEntity<ListWithCount<Payment>> search(@RequestBody SearchRequest searchRequest) {
-        return ResponseEntity.ok(logic.fetchByCriteria(
+    public ResponseEntity<ListWithCount<PaymentWithLabels>> search(@RequestBody SearchRequest searchRequest) {
+        return ResponseEntity.ok(logic.getPaymentWithLabelsLogic().fetchByCriteria(
                 searchRequest.searchConfiguration().exactMatch(),
                 searchRequest.searchCriteria(),
                 searchRequest.searchConfiguration().sortColumn(),
