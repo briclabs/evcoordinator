@@ -54,7 +54,7 @@ public class ParticipantController<P extends Participant> extends ApiController<
 
     @PostMapping("/preexists")
     public ResponseEntity<Void> preexists(@RequestBody P participant) {
-        var preexistingParticipant = logic.fetchPreexistingAttendeeByNameAndEmail(participant.getNameFirst(), participant.getNameLast(), participant.getAddrEmail());
+        var preexistingParticipant = logic.fetchAttendeeByNameAndEmail(participant.getNameFirst(), participant.getNameLast(), participant.getAddrEmail());
 
         LOGGER.info("preexistingParticipant: {}", preexistingParticipant);
 

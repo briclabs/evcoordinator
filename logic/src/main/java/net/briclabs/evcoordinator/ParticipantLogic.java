@@ -35,7 +35,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
      * @param addrEmail The email address of the attendee to search for.
      * @return A list with count containing participants that match the provided criteria.
      */
-    public ListWithCount<Participant> fetchPreexistingAttendeeByNameAndEmail(String nameFirst, String nameLast, String addrEmail) {
+    public ListWithCount<Participant> fetchAttendeeByNameAndEmail(String nameFirst, String nameLast, String addrEmail) {
         return fetchByCriteria(
                 true,
                 Map.of(net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.PARTICIPANT_TYPE.getName(), "ATTENDEE",
