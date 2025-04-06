@@ -1,8 +1,11 @@
 package net.briclabs.evcoordinator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.generated.tables.pojos.Configuration;
+import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.records.ConfigurationRecord;
 import org.jooq.DSLContext;
+import org.jooq.JSON;
 import org.jooq.JSONB;
 
 import java.util.Map;
@@ -11,9 +14,12 @@ import java.util.Optional;
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.Tables.CONFIGURATION;
 
-public class ConfigurationLogic<P extends Configuration> extends Logic<ConfigurationRecord, Configuration, net.briclabs.evcoordinator.generated.tables.Configuration> implements WriteLogic<P>  {
-    public ConfigurationLogic(DSLContext jooq) {
-        super(jooq, Configuration.class, CONFIGURATION, CONFIGURATION.ID);
+public class ConfigurationLogic<P extends Configuration> extends Logic<ConfigurationRecord, Configuration, net.briclabs.evcoordinator.generated.tables.Configuration> implements WriteLogic<P> {
+    private final HistoryLogic<DataHistory> historyLogic;
+
+    public ConfigurationLogic(ObjectMapper objectMapper, DSLContext jooq) {
+        super(objectMapper, jooq, Configuration.class, CONFIGURATION, CONFIGURATION.ID);
+        this.historyLogic = new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, jooq), jooq);
     }
 
     @Override
@@ -43,8 +49,8 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
     }
 
     @Override
-    public Optional<Long> insertNew(P pojo) {
-        return jooq
+    public Optional<Long> insertNew(long actorId, P pojo) {
+        var insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().CHARITY_NAME, pojo.getCharityName())
                 .set(getTable().CHARITY_URL, pojo.getCharityUrl())
@@ -56,11 +62,24 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
                 .returning(getIdColumn())
                 .fetchOptional()
                 .map(ConfigurationRecord::getId);
+        if (insertedId.isPresent()) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.INSERTED.name(),
+                    getTable().getName(),
+                    convertToJson(pojo),
+                    JSON.json("{}"),
+                    null
+            ));
+        }
+        return insertedId;
     }
 
     @Override
-    public int updateExisting(P update) {
-        return jooq
+    public int updateExisting(long actorId, P update) {
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Configuration not found: " + update.getId()));
+        int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().CHARITY_NAME, update.getCharityName())
                 .set(getTable().CHARITY_URL, update.getCharityUrl())
@@ -80,5 +99,17 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
                                 .or(getTable().RECOMMENDED_DONATION.notEqual(update.getRecommendedDonation()))
                 )
                 .execute();
+        if (updatedRecords > 0) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.UPDATED.name(),
+                    getTable().getName(),
+                    convertToJson(update),
+                    convertToJson(originalRecord),
+                    null
+            ));
+        }
+        return updatedRecords;
     }
 }

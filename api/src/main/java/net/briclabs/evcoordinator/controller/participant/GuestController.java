@@ -1,5 +1,6 @@
 package net.briclabs.evcoordinator.controller.participant;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.GuestLogic;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
@@ -47,8 +48,8 @@ public class GuestController<P extends Guest> extends ApiController<
     > implements WriteController<P>, ReadController<GuestWithLabels>, DeleteEndpoint {
 
     @Autowired
-    public GuestController(DSLContext dslContext) {
-        super(dslContext, new GuestLogic<>(dslContext));
+    public GuestController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new GuestLogic<>(objectMapper, dslContext));
     }
 
     @Override
@@ -77,14 +78,14 @@ public class GuestController<P extends Guest> extends ApiController<
     public ResponseEntity<Long> create(@RequestBody P guest) throws HttpClientErrorException {
         return logic.isAlreadyRecorded(guest)
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(guest).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.insertNew(getActorId(), guest).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<Integer> update(@RequestBody P guest) {
-        int countOfRecordsUpdated = logic.updateExisting(guest);
+        int countOfRecordsUpdated = logic.updateExisting(getActorId(), guest);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 
@@ -92,7 +93,7 @@ public class GuestController<P extends Guest> extends ApiController<
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
-        logic.delete(id);
+        logic.delete(getActorId(), id);
         return ResponseEntity.noContent().build();
     }
 }

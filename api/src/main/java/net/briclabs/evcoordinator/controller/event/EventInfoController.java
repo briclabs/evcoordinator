@@ -1,5 +1,6 @@
 package net.briclabs.evcoordinator.controller.event;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.EventInfoLogic;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
@@ -46,8 +47,8 @@ public class EventInfoController<P extends EventInfo> extends ApiController<
     > implements WriteController<P>, ReadController<EventInfo>, DeleteEndpoint {
 
     @Autowired
-    public EventInfoController(DSLContext dslContext) {
-        super(dslContext, new EventInfoLogic<>(dslContext));
+    public EventInfoController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new EventInfoLogic<>(objectMapper, dslContext));
     }
 
     @Override
@@ -80,14 +81,14 @@ public class EventInfoController<P extends EventInfo> extends ApiController<
     public ResponseEntity<Long> create(@RequestBody P eventInfo) throws HttpClientErrorException {
         return logic.isAlreadyRecorded(eventInfo)
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(eventInfo).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.insertNew(getActorId(), eventInfo).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<Integer> update(@RequestBody P updatedEventInfo) {
-        int countOfRecordsUpdated = logic.updateExisting(updatedEventInfo);
+        int countOfRecordsUpdated = logic.updateExisting(getActorId(), updatedEventInfo);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 
@@ -95,7 +96,7 @@ public class EventInfoController<P extends EventInfo> extends ApiController<
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
-        logic.delete(id);
+        logic.delete(getActorId(), id);
         return ResponseEntity.noContent().build();
     }
 }

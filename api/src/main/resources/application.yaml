@@ -1,9 +1,9 @@
 spring:
   datasource:
     url: ${POSTGRES_URL:jdbc:postgresql://db:5432/evcoordinator}
-    driverClassName: org.postgresql.Driver
     username: ${POSTGRES_USER:postgres-user}
     password: ${POSTGRES_PASSWORD:postgres-pass}
+    driver-class-name: org.postgresql.Driver
   liquibase:
     drop-first: true
   jooq:

@@ -1,11 +1,15 @@
 package net.briclabs.evcoordinator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.Guest;
 import net.briclabs.evcoordinator.generated.tables.pojos.GuestWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.GuestRecord;
 import net.briclabs.evcoordinator.generated.tables.records.GuestWithLabelsRecord;
 import org.jooq.DSLContext;
+import org.jooq.JSON;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -14,12 +18,14 @@ import static net.briclabs.evcoordinator.generated.tables.Guest.GUEST;
 import static net.briclabs.evcoordinator.generated.tables.GuestWithLabels.GUEST_WITH_LABELS;
 
 public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.briclabs.evcoordinator.generated.tables.Guest> implements WriteLogic<P>, DeletableRecord {
+    private final HistoryLogic<DataHistory> historyLogic;
 
     private final GuestLogic.GuestWithLabelsLogic guestWithLabelsLogic;
 
-    public GuestLogic(DSLContext jooq) {
-        super(jooq, Guest.class, GUEST, GUEST.ID);
-        this.guestWithLabelsLogic = new GuestLogic.GuestWithLabelsLogic(jooq);
+    public GuestLogic(ObjectMapper objectMapper, DSLContext jooq) {
+        super(objectMapper, jooq, Guest.class, GUEST, GUEST.ID);
+        this.guestWithLabelsLogic = new GuestLogic.GuestWithLabelsLogic(objectMapper, jooq);
+        this.historyLogic = new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, jooq), jooq);
     }
 
     public GuestLogic.GuestWithLabelsLogic getGuestWithLabelsLogic() {
@@ -38,8 +44,8 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
     }
 
     @Override
-    public Optional<Long> insertNew(P pojo) {
-        return jooq
+    public Optional<Long> insertNew(long actorId, P pojo) {
+        Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().REGISTRATION_ID, pojo.getRegistrationId())
                 .set(getTable().INVITEE_PROFILE_ID, pojo.getInviteeProfileId())
@@ -49,11 +55,24 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
                 .returning(getIdColumn())
                 .fetchOptional()
                 .map(GuestRecord::getId);
+        if (insertedId.isPresent()) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.INSERTED.name(),
+                    getTable().getName(),
+                    convertToJson(pojo),
+                    JSON.json("{}"),
+                    null
+            ));
+        }
+        return insertedId;
     }
 
     @Override
-    public int updateExisting(P update) {
-        return jooq
+    public int updateExisting(long actorId, P update) {
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Guest not found: " + update.getId()));
+        int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().REGISTRATION_ID, update.getRegistrationId())
                 .set(getTable().INVITEE_PROFILE_ID, update.getInviteeProfileId())
@@ -63,21 +82,58 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
                 .where(getIdColumn().eq(update.getId()))
                 .and(
                         getTable().REGISTRATION_ID.notEqual(update.getRegistrationId())
-                    .or(getTable().INVITEE_PROFILE_ID.notEqual(update.getInviteeProfileId()))
-                    .or(getTable().GUEST_PROFILE_ID.notEqual(update.getGuestProfileId()))
-                    .or(getTable().RAW_GUEST_NAME.notEqual(update.getRawGuestName()))
-                    .or(getTable().RELATIONSHIP.notEqual(update.getRelationship()))
+                                .or(getTable().INVITEE_PROFILE_ID.notEqual(update.getInviteeProfileId()))
+                                .or(getTable().GUEST_PROFILE_ID.notEqual(update.getGuestProfileId()))
+                                .or(getTable().RAW_GUEST_NAME.notEqual(update.getRawGuestName()))
+                                .or(getTable().RELATIONSHIP.notEqual(update.getRelationship()))
                 ).execute();
+        if (updatedRecords > 0) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.UPDATED.name(),
+                    getTable().getName(),
+                    convertToJson(update),
+                    convertToJson(originalRecord),
+                    null
+            ));
+        }
+        return updatedRecords;
     }
 
     @Override
-    public void delete(Long id) {
-        jooq.deleteFrom(getTable()).where(getTable().ID.eq(id)).execute();
+    public void delete(long actorId, long idToDelete) {
+        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RuntimeException("Guest not found: " + idToDelete));
+        var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
+        if (deletedRecords > 0) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.DELETED.name(),
+                    getTable().getName(),
+                    JSON.json("{}"),
+                    convertToJson(originalRecord),
+                    null
+            ));
+        }
     }
 
+    /**
+     * Retrieves a list of guest IDs that are associated with the provided registration IDs.
+     *
+     * @param registrationIds a list of registration IDs for which associated guest IDs need to be fetched.
+     * @return a list of guest IDs corresponding to the given registration IDs.
+     */
+    public List<Long> getGuestIdsByRegistrationIds(List<Long> registrationIds) {
+        return jooq.select(getIdColumn()).from(getTable()).where(getTable().REGISTRATION_ID.in(registrationIds)).fetchInto(Long.class);
+    }
+
+    /**
+     * Special logic class that works with a view instead of the raw table. The view provides useful label information for rows which, in the table, are simply FKs.
+     */
     public static class GuestWithLabelsLogic extends Logic<GuestWithLabelsRecord, GuestWithLabels, net.briclabs.evcoordinator.generated.tables.GuestWithLabels> {
-        public GuestWithLabelsLogic(DSLContext jooq) {
-            super(jooq, GuestWithLabels.class, GUEST_WITH_LABELS, GUEST_WITH_LABELS.ID);
+        public GuestWithLabelsLogic(ObjectMapper objectMapper, DSLContext jooq) {
+            super(objectMapper, jooq, GuestWithLabels.class, GUEST_WITH_LABELS, GUEST_WITH_LABELS.ID);
         }
     }
 }

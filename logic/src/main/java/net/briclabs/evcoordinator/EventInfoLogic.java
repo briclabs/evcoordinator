@@ -1,22 +1,36 @@
 package net.briclabs.evcoordinator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
+import net.briclabs.evcoordinator.generated.tables.pojos.Guest;
+import net.briclabs.evcoordinator.generated.tables.pojos.Payment;
+import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
 import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
 import org.jooq.DSLContext;
+import org.jooq.JSON;
 
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.EventInfo.EVENT_INFO;
-import static net.briclabs.evcoordinator.generated.tables.Guest.GUEST;
-import static net.briclabs.evcoordinator.generated.tables.Payment.PAYMENT;
 import static net.briclabs.evcoordinator.generated.tables.Registration.REGISTRATION;
 
 public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, EventInfo, net.briclabs.evcoordinator.generated.tables.EventInfo> implements WriteLogic<P>, DeletableRecord {
-    public EventInfoLogic(DSLContext jooq) {
-        super(jooq, EventInfo.class, EVENT_INFO, EVENT_INFO.ID);
+    private final HistoryLogic<DataHistory> historyLogic;
+    private final PaymentLogic<Payment> paymentLogic;
+    private final GuestLogic<Guest> guestLogic;
+    private final RegistrationLogic<Registration> registrationLogic;
+
+    public EventInfoLogic(ObjectMapper objectMapper, DSLContext jooq) {
+        super(objectMapper, jooq, EventInfo.class, EVENT_INFO, EVENT_INFO.ID);
+        this.historyLogic = new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, jooq), jooq);
+        this.paymentLogic = new PaymentLogic<>(objectMapper, jooq);
+        this.guestLogic = new GuestLogic<>(objectMapper, jooq);
+        this.registrationLogic = new RegistrationLogic<>(objectMapper, jooq);
     }
 
     @Override
@@ -45,8 +59,8 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
     }
 
     @Override
-    public Optional<Long> insertNew(P pojo) {
-        return jooq
+    public Optional<Long> insertNew(long actorId, P pojo) {
+        Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().EVENT_STATUS, pojo.getEventStatus())
                 .set(getTable().EVENT_NAME, pojo.getEventName())
@@ -56,11 +70,24 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
                 .returning(getIdColumn())
                 .fetchOptional()
                 .map(EventInfoRecord::getId);
+        if (insertedId.isPresent()) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.INSERTED.name(),
+                    getTable().getName(),
+                    convertToJson(pojo),
+                    JSON.json("{}"),
+                    null
+            ));
+        }
+        return insertedId;
     }
 
     @Override
-    public int updateExisting(P update) {
-        return jooq
+    public int updateExisting(long actorId, P update) {
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Event Info not found: " + update.getId()));
+        int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().EVENT_STATUS, update.getEventStatus())
                 .set(getTable().EVENT_NAME, update.getEventName())
@@ -70,24 +97,56 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
                 .where(getIdColumn().eq(update.getId()))
                 .and(
                         getTable().EVENT_STATUS.notEqual(update.getEventStatus())
-                    .or(getTable().EVENT_NAME.notEqual(update.getEventName()))
-                    .or(getTable().EVENT_TITLE.notEqual(update.getEventTitle()))
-                    .or(getTable().DATE_START.notEqual(update.getDateStart()))
-                    .or(getTable().DATE_END.notEqual(update.getDateEnd()))
+                                .or(getTable().EVENT_NAME.notEqual(update.getEventName()))
+                                .or(getTable().EVENT_TITLE.notEqual(update.getEventTitle()))
+                                .or(getTable().DATE_START.notEqual(update.getDateStart()))
+                                .or(getTable().DATE_END.notEqual(update.getDateEnd()))
                 ).execute();
+        if (updatedRecords > 0) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.UPDATED.name(),
+                    getTable().getName(),
+                    convertToJson(update),
+                    convertToJson(originalRecord),
+                    null
+            ));
+        }
+        return updatedRecords;
     }
 
     @Override
-    public void delete(Long id) {
-        var paymentsToDelete = jooq.select(PAYMENT.ID).from(PAYMENT).where(PAYMENT.EVENT_INFO_ID.eq(id)).fetchInto(Long.class);
-        jooq.deleteFrom(PAYMENT).where(PAYMENT.ID.in(paymentsToDelete)).execute();
+    public void delete(long actorId, long idToDelete) {
+        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RuntimeException("Event Info not found: " + idToDelete));
+        deleteCorrespondingPayments(actorId, idToDelete);
+        deleteCorrespondingRegistrationsAndGuests(actorId, idToDelete);
 
-        var registrationIdsToDelete = jooq.select(REGISTRATION.ID).from(REGISTRATION).where(REGISTRATION.EVENT_INFO_ID.eq(id)).fetchInto(Long.class);
-        var guestIdsToDelete = jooq.select(GUEST.ID).from(GUEST).where(GUEST.REGISTRATION_ID.in(registrationIdsToDelete)).fetchInto(Long.class);
+        var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
+        if (deletedRecords > 0) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.UPDATED.name(),
+                    getTable().getName(),
+                    JSON.json("{}"),
+                    convertToJson(originalRecord),
+                    null
+            ));
+        }
+    }
 
-        jooq.deleteFrom(GUEST).where(GUEST.ID.in(guestIdsToDelete)).execute();
-        jooq.deleteFrom(REGISTRATION).where(REGISTRATION.ID.in(registrationIdsToDelete)).execute();
+    private void deleteCorrespondingRegistrationsAndGuests(long actorId, long idToDelete) {
+        var registrationIdsToDelete = jooq.select(REGISTRATION.ID).from(REGISTRATION).where(REGISTRATION.EVENT_INFO_ID.eq(idToDelete)).fetchInto(Long.class);
+        deleteCorrespondingGuests(actorId, registrationIdsToDelete);
+        registrationIdsToDelete.forEach(registrationIdToDelete -> registrationLogic.delete(actorId, registrationIdToDelete));
+    }
 
-        jooq.deleteFrom(getTable()).where(getTable().ID.eq(id)).execute();
+    private void deleteCorrespondingGuests(long actorId, List<Long> registrationIdsToDelete) {
+        guestLogic.getGuestIdsByRegistrationIds(registrationIdsToDelete).forEach(guestIdToDelete -> guestLogic.delete(actorId, guestIdToDelete));
+    }
+
+    private void deleteCorrespondingPayments(long actorId, long eventId) {
+        paymentLogic.getPaymentIdsByEventId(eventId).forEach(paymentIdToDelete -> paymentLogic.delete(actorId, paymentIdToDelete));
     }
 }

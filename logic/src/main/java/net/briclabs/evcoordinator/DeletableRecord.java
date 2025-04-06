@@ -4,7 +4,8 @@ public interface DeletableRecord {
 
     /**
      * Deletes a record from the database.
-     * @param id the ID of the record to be deleted.
+     * @param actorId the ID of the participant performing the deletion.
+     * @param idToDelete the ID of the record to be deleted.
      */
-    void delete(Long id);
+    void delete(long actorId, long idToDelete);
 }

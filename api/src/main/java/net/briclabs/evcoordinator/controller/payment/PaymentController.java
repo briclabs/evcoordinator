@@ -1,5 +1,6 @@
 package net.briclabs.evcoordinator.controller.payment;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.PaymentLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
@@ -47,8 +48,8 @@ public class PaymentController<P extends Payment> extends ApiController<
     > implements WriteController<P>, ReadController<PaymentWithLabels>, DeleteEndpoint {
 
     @Autowired
-    public PaymentController(DSLContext dslContext) {
-        super(dslContext, new PaymentLogic<>(dslContext));
+    public PaymentController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new PaymentLogic<>(objectMapper, dslContext));
     }
 
     @Override
@@ -76,14 +77,14 @@ public class PaymentController<P extends Payment> extends ApiController<
     public ResponseEntity<Long> create(@RequestBody P payment) throws HttpClientErrorException {
         return logic.isAlreadyRecorded(payment)
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(payment).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.insertNew(getActorId(), payment).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<Integer> update(@RequestBody P updatedPayment) {
-        int countOfRecordsUpdated = logic.updateExisting(updatedPayment);
+        int countOfRecordsUpdated = logic.updateExisting(getActorId(), updatedPayment);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 
@@ -91,7 +92,7 @@ public class PaymentController<P extends Payment> extends ApiController<
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
-        logic.delete(id);
+        logic.delete(getActorId(), id);
         return ResponseEntity.noContent().build();
     }
 }

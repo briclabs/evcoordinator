@@ -1,10 +1,13 @@
 package net.briclabs.evcoordinator.controller.history;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.HistoryLogic;
 import net.briclabs.evcoordinator.ListWithCount;
+import net.briclabs.evcoordinator.ParticipantLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
+import net.briclabs.evcoordinator.generated.tables.pojos.DataHistoryWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.DataHistoryRecord;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
@@ -30,31 +33,28 @@ import org.springframework.web.bind.annotation.RestController;
 @EnableMethodSecurity
 @Validated
 @RequestMapping(ApiController.V1 + "/history")
-public class HistoryController extends ApiController<
+public class HistoryController<P extends DataHistory> extends ApiController<
         DataHistoryRecord,
         DataHistory,
         net.briclabs.evcoordinator.generated.tables.DataHistory,
-        HistoryLogic
-    > implements ReadController<DataHistory> {
-// TODO this should only have objects created via TRIGGER...
-
-    public static final Class<DataHistory> POJO = DataHistory.class;
+        HistoryLogic<P>
+    > implements ReadController<DataHistoryWithLabels> {
 
     @Autowired
-    public HistoryController(DSLContext dslContext) {
-        super(dslContext, new HistoryLogic(dslContext));
+    public HistoryController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, dslContext), dslContext));
     }
 
     @Override
     @GetMapping(value = "/{id}")
-    public ResponseEntity<DataHistory> findById(@PathVariable("id") Long id) {
-        return logic.fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<DataHistoryWithLabels> findById(@PathVariable("id") Long id) {
+        return logic.getDataHistoryWithLabelsLogic().fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping(path = "/search")
-    public ResponseEntity<ListWithCount<DataHistory>> search(@RequestBody SearchRequest searchRequest) {
-        return ResponseEntity.ok(logic.fetchByCriteria(
+    public ResponseEntity<ListWithCount<DataHistoryWithLabels>> search(@RequestBody SearchRequest searchRequest) {
+        return ResponseEntity.ok(logic.getDataHistoryWithLabelsLogic().fetchByCriteria(
                 searchRequest.searchConfiguration().exactMatch(),
                 searchRequest.searchCriteria(),
                 searchRequest.searchConfiguration().sortColumn(),

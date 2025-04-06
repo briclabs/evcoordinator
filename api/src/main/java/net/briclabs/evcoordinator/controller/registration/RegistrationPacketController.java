@@ -1,7 +1,10 @@
 package net.briclabs.evcoordinator.controller.registration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.RegistrationPacketLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
+import net.briclabs.evcoordinator.generated.tables.pojos.RegistrationPacketWithLabel;
+import net.briclabs.evcoordinator.generated.tables.records.RegistrationPacketWithLabelRecord;
 import net.briclabs.evcoordinator.model.RegistrationPacket;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,13 +30,16 @@ import org.springframework.web.bind.annotation.RestController;
 @EnableMethodSecurity
 @Validated
 @RequestMapping(ApiController.V1 + "/registrationPacket")
-public class RegistrationPacketController {
-
-    private final RegistrationPacketLogic<RegistrationPacket> logic;
+public class  RegistrationPacketController extends ApiController<
+        RegistrationPacketWithLabelRecord,
+        RegistrationPacketWithLabel,
+        net.briclabs.evcoordinator.generated.tables.RegistrationPacketWithLabel,
+        RegistrationPacketLogic<RegistrationPacket>
+        > {
 
     @Autowired
-    public RegistrationPacketController(DSLContext dslContext) {
-        this.logic = new RegistrationPacketLogic<>(dslContext);
+    public RegistrationPacketController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new RegistrationPacketLogic<>(objectMapper, dslContext));
     }
 
     /**
@@ -48,6 +54,6 @@ public class RegistrationPacketController {
     public ResponseEntity<Long> register(@RequestBody RegistrationPacket registration) {
         return registration == null
                 ? ResponseEntity.badRequest().build()
-                : logic.register(registration).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.register(getActorId(), registration).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 }

@@ -1,14 +1,21 @@
 package net.briclabs.evcoordinator.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.Logic;
+import net.briclabs.evcoordinator.ParticipantLogic;
+import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import org.jooq.DSLContext;
 import org.jooq.impl.TableImpl;
-import org.jooq.impl.UpdatableRecordImpl;
+import org.jooq.impl.TableRecordImpl;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 import java.io.Serializable;
+import java.util.Optional;
 
 public abstract class ApiController<
-        R extends UpdatableRecordImpl<R>,
+        R extends TableRecordImpl<R>,
         P extends Serializable,
         T extends TableImpl<R>,
         L extends Logic<R, P, T>
@@ -19,9 +26,43 @@ public abstract class ApiController<
     protected final DSLContext jooq;
 
     protected final L logic;
+    protected final ParticipantLogic<Participant> participantLogic;
 
-    public ApiController(DSLContext dslContext, L logic) {
+    public ApiController(ObjectMapper objectMapper, DSLContext dslContext, L logic) {
         this.jooq = dslContext;
         this.logic = logic;
+        this.participantLogic = new ParticipantLogic<>(objectMapper, jooq);
+    }
+
+    /**
+     * Retrieves the ID of the authenticated participant.
+     * If no authenticated participant is found or the ID is null,
+     * the method returns 0.
+     *
+     * @return the ID of the authenticated participant if present; otherwise, 0.
+     */
+    protected long getActorId() {
+        var participant = getAuthenticatedParticipant();
+        return participant.isEmpty() || participant.get().getId() == null ? 0 : participant.get().getId();
+    }
+
+    /**
+     * Retrieves the authenticated participant based on the current security context.
+     * If the user is authenticated and their email address is present in the authentication token,
+     * it fetches the participant associated with that email address.
+     *
+     * @return an {@code Optional} containing the authenticated participant if present;
+     *         otherwise, an empty {@code Optional}.
+     */
+    private Optional<Participant> getAuthenticatedParticipant() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated() && authentication instanceof JwtAuthenticationToken jwtAuthenticationToken) {
+            var authenticatedUserEmailAddress = jwtAuthenticationToken.getTokenAttributes().get("email").toString();
+            var fetchedParticipants = participantLogic.fetchParticipantByEmail(authenticatedUserEmailAddress);
+            if (fetchedParticipants.count() > 0) {
+                return Optional.of(fetchedParticipants.list().get(0));
+            }
+        }
+        return Optional.empty();
     }
 }

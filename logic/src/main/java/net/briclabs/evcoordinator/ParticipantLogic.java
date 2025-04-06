@@ -1,8 +1,11 @@
 package net.briclabs.evcoordinator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.generated.tables.records.ParticipantRecord;
 import org.jooq.DSLContext;
+import org.jooq.JSON;
 import org.jooq.tools.StringUtils;
 
 import java.time.format.DateTimeFormatter;
@@ -23,12 +26,17 @@ import static net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPAN
  * @implNote The Participant object in the data model cannot be deleted because of the impact this would have to the History table.
  */
 public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRecord, Participant, net.briclabs.evcoordinator.generated.tables.Participant> implements WriteLogic<P> {
-    public ParticipantLogic(DSLContext jooq) {
-        super(jooq, Participant.class, PARTICIPANT, PARTICIPANT.ID);
+    private final HistoryLogic<DataHistory> historyLogic;
+
+    public ParticipantLogic(ObjectMapper objectMapper, DSLContext jooq) {
+        super(objectMapper, jooq, Participant.class, PARTICIPANT, PARTICIPANT.ID);
+        this.historyLogic = new HistoryLogic<>(objectMapper, this, jooq);
     }
 
     /**
      * Fetches preexisting attendees based on their first name, last name, and email address.
+     * Keying off of first and last name in addition to email address provides a bit more security
+     * against automated attempts to guess whether someone is a participant.
      *
      * @param nameFirst The first name of the attendee to search for.
      * @param nameLast The last name of the attendee to search for.
@@ -42,6 +50,22 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                         net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.NAME_FIRST.getName(), nameFirst,
                         net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.NAME_LAST.getName(), nameLast,
                         net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.ADDR_EMAIL.getName(), addrEmail),
+                null,
+                false,
+                0,
+                1);
+    }
+
+    /**
+     * Fetches preexisting participants based on their email address.
+     *
+     * @param addrEmail The email address of the attendee to search for.
+     * @return A list with count containing participants that match the provided criteria.
+     */
+    public ListWithCount<Participant> fetchParticipantByEmail(String addrEmail) {
+        return fetchByCriteria(
+                true,
+                Map.of(net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.ADDR_EMAIL.getName(), addrEmail),
                 null,
                 false,
                 0,
@@ -86,8 +110,8 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
     }
 
     @Override
-    public Optional<Long> insertNew(P pojo) {
-        return jooq
+    public Optional<Long> insertNew(long actorId, P pojo) {
+        Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().PARTICIPANT_TYPE, pojo.getParticipantType())
                 .set(getTable().SPONSOR, pojo.getSponsor())
@@ -108,11 +132,24 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                 .returning(getIdColumn())
                 .fetchOptional()
                 .map(ParticipantRecord::getId);
+        if (insertedId.isPresent()) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.INSERTED.name(),
+                    getTable().getName(),
+                    convertToJson(pojo),
+                    JSON.json("{}"),
+                    null
+            ));
+        }
+        return insertedId;
     }
 
     @Override
-    public int updateExisting(P update) {
-        return jooq.update(getTable())
+    public int updateExisting(long actorId, P update) {
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Participant not found: " + update.getId()));
+        int updatedRecords = jooq.update(getTable())
                 .set(getTable().PARTICIPANT_TYPE, update.getParticipantType())
                 .set(getTable().SPONSOR, update.getSponsor())
                 .set(getTable().NAME_FIRST, update.getNameFirst())
@@ -132,21 +169,33 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                 .where(getIdColumn().eq(update.getId()))
                 .and(
                         getTable().PARTICIPANT_TYPE.notEqual(update.getParticipantType())
-                        .or(getTable().SPONSOR.notEqual(update.getSponsor()))
-                        .or(getTable().NAME_FIRST.notEqual(update.getNameFirst()))
-                        .or(getTable().NAME_LAST.notEqual(update.getNameLast()))
-                        .or(getTable().NAME_NICK.notEqual(update.getNameNick()))
-                        .or(getTable().DOB.notEqual(update.getDob()))
-                        .or(getTable().ADDR_STREET_1.notEqual(update.getAddrStreet_1()))
-                        .or(getTable().ADDR_STREET_2.notEqual(update.getAddrStreet_2()))
-                        .or(getTable().ADDR_CITY.notEqual(update.getAddrCity()))
-                        .or(getTable().ADDR_STATE_ABBR.notEqual(update.getAddrStateAbbr()))
-                        .or(getTable().ADDR_ZIP.notEqual(update.getAddrZip()))
-                        .or(getTable().ADDR_EMAIL.notEqual(update.getAddrEmail()))
-                        .or(getTable().NAME_EMERGENCY.notEqual(update.getNameEmergency()))
-                        .or(getTable().PHONE_EMERGENCY.notEqual(update.getPhoneEmergency()))
-                        .or(getTable().EMERGENCY_CONTACT_RELATIONSHIP_TYPE.notEqual(update.getEmergencyContactRelationshipType()))
-                        .or(getTable().PHONE_DIGITS.notEqual(update.getPhoneDigits()))
+                                .or(getTable().SPONSOR.notEqual(update.getSponsor()))
+                                .or(getTable().NAME_FIRST.notEqual(update.getNameFirst()))
+                                .or(getTable().NAME_LAST.notEqual(update.getNameLast()))
+                                .or(getTable().NAME_NICK.notEqual(update.getNameNick()))
+                                .or(getTable().DOB.notEqual(update.getDob()))
+                                .or(getTable().ADDR_STREET_1.notEqual(update.getAddrStreet_1()))
+                                .or(getTable().ADDR_STREET_2.notEqual(update.getAddrStreet_2()))
+                                .or(getTable().ADDR_CITY.notEqual(update.getAddrCity()))
+                                .or(getTable().ADDR_STATE_ABBR.notEqual(update.getAddrStateAbbr()))
+                                .or(getTable().ADDR_ZIP.notEqual(update.getAddrZip()))
+                                .or(getTable().ADDR_EMAIL.notEqual(update.getAddrEmail()))
+                                .or(getTable().NAME_EMERGENCY.notEqual(update.getNameEmergency()))
+                                .or(getTable().PHONE_EMERGENCY.notEqual(update.getPhoneEmergency()))
+                                .or(getTable().EMERGENCY_CONTACT_RELATIONSHIP_TYPE.notEqual(update.getEmergencyContactRelationshipType()))
+                                .or(getTable().PHONE_DIGITS.notEqual(update.getPhoneDigits()))
                 ).execute();
+        if (updatedRecords > 0) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.UPDATED.name(),
+                    getTable().getName(),
+                    convertToJson(update),
+                    convertToJson(originalRecord),
+                    null
+            ));
+        }
+        return updatedRecords;
     }
 }

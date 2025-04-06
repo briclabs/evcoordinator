@@ -2,10 +2,10 @@
 
 -- changeset liquibase:1
 CREATE TABLE IF NOT EXISTS table_ref ( table_ref text PRIMARY KEY );
-INSERT INTO table_ref (table_ref) VALUES ('PARTICIPANT'), ('EVENT'), ('PAYMENT'), ('DATA');
+INSERT INTO table_ref (table_ref) VALUES ('CONFIGURATION'), ('PARTICIPANT'), ('EVENT_INFO'), ('REGISTRATION'), ('GUEST'), ('PAYMENT');
 
 CREATE TABLE IF NOT EXISTS data_history_type ( history_type text PRIMARY KEY );
-INSERT INTO data_history_type (history_type) VALUES ('UPDATED');
+INSERT INTO data_history_type (history_type) VALUES ('INSERTED'), ('UPDATED'), ('DELETED');
 
 CREATE TABLE IF NOT EXISTS participant_type ( participant_type text PRIMARY KEY );
 INSERT INTO participant_type (participant_type) VALUES ('VENDOR'), ('VENUE'), ('ATTENDEE');
@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS participant (
    phone_emergency bigint NOT NULL,
    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
    PRIMARY KEY (id),
-   UNIQUE (addr_email, participant_type));
+   UNIQUE (addr_email));
 
 CREATE TABLE IF NOT EXISTS data_history (
     id bigint GENERATED ALWAYS AS IDENTITY,
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS payment (
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
-CREATE OR REPLACE VIEW registration_with_labels AS
+CREATE OR REPLACE VIEW registration_packet_with_label AS
     SELECT
         r.*,
         p.name_first AS participant_name_first,
@@ -153,6 +153,61 @@ CREATE OR REPLACE VIEW guest_with_labels AS
             LEFT JOIN
         participant gp ON g.guest_profile_id = gp.id;
 
+CREATE OR REPLACE VIEW registration_with_labels AS
+SELECT
+    r.*,
+    p.participant_type,
+    p.name_first,
+    p.name_last,
+    p.name_nick,
+    p.addr_email,
+    p.addr_street_1,
+    p.addr_street_2,
+    p.addr_city,
+    p.addr_state_abbr,
+    p.addr_zip,
+    p.dob,
+    p.name_emergency,
+    p.phone_emergency,
+    p.emergency_contact_relationship_type,
+    p.time_recorded AS participant_time_recorded,
+    e.event_name,
+    e.event_title,
+    STRING_AGG(
+        '{' || 'guest_profile_id:' ||  g.guest_profile_id || ', raw_guest_name:' || g.raw_guest_name || ', relationship:' || g.relationship || ', time_recorded:' || g.time_recorded || '}', ','
+    ) AS guests
+FROM
+    registration r
+        JOIN
+    participant p ON r.participant_id = p.id
+        JOIN
+    event_info e ON r.event_info_id = e.id
+        LEFT JOIN
+    guest g ON p.id = g.invitee_profile_id
+group by r.id,
+         r.participant_id,
+         r.donation_pledge,
+         r.signature,
+         r.event_info_id,
+         r.time_recorded,
+         p.participant_type,
+         p.name_first,
+         p.name_last,
+         p.name_nick,
+         p.addr_email,
+         p.addr_street_1,
+         p.addr_street_2,
+         p.addr_city,
+         p.addr_state_abbr,
+         p.addr_zip,
+         p.dob,
+         p.name_emergency,
+         p.phone_emergency,
+         p.emergency_contact_relationship_type,
+         p.time_recorded,
+         e.event_name,
+         e.event_title;
+
 CREATE OR REPLACE VIEW payment_with_labels AS
     SELECT
         p.*,
@@ -170,3 +225,13 @@ CREATE OR REPLACE VIEW payment_with_labels AS
         participant pa ON p.actor_id = pa.id
             JOIN
         participant pr ON p.recipient_id = pr.id;
+
+CREATE OR REPLACE VIEW data_history_with_labels AS
+    SELECT
+        h.*,
+        a.name_first AS actor_name_first,
+        a.name_last AS actor_name_last
+    FROM
+        data_history h
+            JOIN
+        participant a ON h.actor_id = a.id;

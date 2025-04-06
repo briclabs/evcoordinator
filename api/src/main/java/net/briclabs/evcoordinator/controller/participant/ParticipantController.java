@@ -1,5 +1,6 @@
 package net.briclabs.evcoordinator.controller.participant;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.ParticipantLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
@@ -48,8 +49,8 @@ public class ParticipantController<P extends Participant> extends ApiController<
     private static final Logger LOGGER = LoggerFactory.getLogger(ParticipantController.class);
 
     @Autowired
-    public ParticipantController(DSLContext dslContext) {
-        super(dslContext, new ParticipantLogic<>(dslContext));
+    public ParticipantController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new ParticipantLogic<>(objectMapper, dslContext));
     }
 
     @PostMapping("/preexists")
@@ -90,14 +91,14 @@ public class ParticipantController<P extends Participant> extends ApiController<
     public ResponseEntity<Long> create(@RequestBody P participant) throws HttpClientErrorException {
         return logic.isAlreadyRecorded(participant) || logic.isEmailAddressAlreadyRecorded(participant.getAddrEmail(), participant.getParticipantType())
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(participant).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.insertNew(getActorId(), participant).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<Integer> update(@RequestBody P updatedParticipant) {
-        int countOfRecordsUpdated = logic.updateExisting(updatedParticipant);
+        int countOfRecordsUpdated = logic.updateExisting(getActorId(), updatedParticipant);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 }

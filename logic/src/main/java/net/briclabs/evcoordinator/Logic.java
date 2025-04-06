@@ -1,5 +1,6 @@
 package net.briclabs.evcoordinator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.jooq.Condition;
 import org.jooq.DSLContext;
 import org.jooq.Field;
@@ -23,19 +24,35 @@ import java.util.stream.Collectors;
 public abstract class Logic<R extends TableRecordImpl<R>, P extends Serializable, T extends TableImpl<R>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Logic.class);
 
+    private final ObjectMapper objectMapper;
     final DSLContext jooq;
     private final Class<P> recordType;
     private final T table;
     private final TableField<R, Long> idColumn;
 
 
-    public Logic(DSLContext jooq, Class<P> recordType, T table, TableField<R, Long> idColumn
+    public Logic(ObjectMapper objectMapper, DSLContext jooq, Class<P> recordType, T table, TableField<R, Long> idColumn
     ) {
+        this.objectMapper = objectMapper;
         this.jooq = jooq;
         this.recordType = recordType;
         this.table = table;
         this.idColumn = idColumn;
+    }
 
+    /**
+     * Converts the provided Plain Old Java Object (POJO) to its JSON representation.
+     *
+     * @param pojo the POJO to be converted to a JSON object.
+     * @return a JSON object representing the converted POJO.
+     * @throws RuntimeException if the conversion process fails.
+     */
+    protected JSON convertToJson(P pojo) {
+        try {
+            return JSON.json(objectMapper.writeValueAsString(pojo));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to convert POJO %s to JSON.".formatted(pojo), e);
+        }
     }
 
     /**

@@ -1,9 +1,11 @@
 package net.briclabs.evcoordinator;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.generated.tables.pojos.Guest;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
-import net.briclabs.evcoordinator.generated.tables.records.RegistrationRecord;
+import net.briclabs.evcoordinator.generated.tables.pojos.RegistrationPacketWithLabel;
+import net.briclabs.evcoordinator.generated.tables.records.RegistrationPacketWithLabelRecord;
 import net.briclabs.evcoordinator.model.RegistrationPacket;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;
@@ -11,9 +13,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Optional;
 
-import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION;
+import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION_PACKET_WITH_LABEL;
 
-public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic<RegistrationRecord, Registration, net.briclabs.evcoordinator.generated.tables.Registration> {
+public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic<RegistrationPacketWithLabelRecord, RegistrationPacketWithLabel, net.briclabs.evcoordinator.generated.tables.RegistrationPacketWithLabel> {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RegistrationPacketLogic.class);
 
@@ -21,11 +23,11 @@ public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic
     private final RegistrationLogic<Registration> registrationLogic;
     private final GuestLogic<Guest> guestLogic;
 
-    public RegistrationPacketLogic(DSLContext jooq) {
-        super(jooq, Registration.class, REGISTRATION, REGISTRATION.ID);
-        this.participantLogic = new ParticipantLogic<>(jooq);
-        this.registrationLogic = new RegistrationLogic<>(jooq);
-        this.guestLogic = new GuestLogic<>(jooq);
+    public RegistrationPacketLogic(ObjectMapper objectMapper, DSLContext jooq) {
+        super(objectMapper, jooq, RegistrationPacketWithLabel.class, REGISTRATION_PACKET_WITH_LABEL, REGISTRATION_PACKET_WITH_LABEL.ID);
+        this.participantLogic = new ParticipantLogic<>(objectMapper, jooq);
+        this.registrationLogic = new RegistrationLogic<>(objectMapper, jooq);
+        this.guestLogic = new GuestLogic<>(objectMapper, jooq);
     }
 
     /**
@@ -35,21 +37,22 @@ public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic
      * packet.
      *
      * @param registrationRequest the registration to create.
+     * @param actorId the participant ID of the participant submitting the registration packet.
      * @return An {@code Optional<Long>} containing the ID of the newly created event if all insertions were successful,
      *         or an empty {@code Optional} if any operation failed during the process.
      */
-    public Optional<Long> register(P registrationRequest) {
+    public Optional<Long> register(long actorId, P registrationRequest) {
         if (isPacketIncomplete(registrationRequest)) {
             return Optional.empty();
         }
 
-        var participantId = fetchOrInsertParticipatingAttendee(registrationRequest);
+        var participantId = fetchOrInsertParticipatingAttendee(actorId, registrationRequest);
         if (participantId.isEmpty()) {
             LOGGER.error("Participant either did not already exist or failed to insert. Aborting registration process.");
             return Optional.empty();
         }
 
-        return insertNewRegistration(registrationRequest.registration(), registrationRequest.guests(), participantId.get());
+        return insertNewRegistration(actorId, registrationRequest.registration(), registrationRequest.guests(), participantId.get());
     }
 
     private boolean isPacketIncomplete(P registrationRequest) {
@@ -60,16 +63,16 @@ public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic
         return false;
     }
 
-    private Optional<Long> fetchOrInsertParticipatingAttendee(P registrationRequest) {
+    private Optional<Long> fetchOrInsertParticipatingAttendee(long actorId, P registrationRequest) {
         var preexistingAttendee = participantLogic.fetchAttendeeByNameAndEmail(registrationRequest.participant().getNameFirst(), registrationRequest.participant().getNameLast(), registrationRequest.participant().getAddrEmail());
         return preexistingAttendee.count() == 0 || preexistingAttendee.list().get(0).getId() == null
-                ? participantLogic.insertNew(registrationRequest.participant())
+                ? participantLogic.insertNew(actorId, registrationRequest.participant())
                 : Optional.ofNullable(preexistingAttendee.list().get(0).getId());
     }
 
-    private Optional<Long> insertNewRegistration(Registration registration, Guest[] guests, Long presentParticipantId) {
+    private Optional<Long> insertNewRegistration(long actorId, Registration registration, Guest[] guests, long presentParticipantId) {
         var registrationToCreate = new Registration(null, presentParticipantId, registration.getDonationPledge(), registration.getSignature(), registration.getEventInfoId(), null);
-        Optional<Long> registrationId = registrationLogic.isAlreadyRecorded(registrationToCreate) ? Optional.empty() : registrationLogic.insertNew(registrationToCreate);
+        Optional<Long> registrationId = registrationLogic.isAlreadyRecorded(registrationToCreate) ? Optional.empty() : registrationLogic.insertNew(actorId, registrationToCreate);
         if (registrationId.isEmpty()) {
             LOGGER.error("Failed to insert a registration.");
             return Optional.empty();
@@ -77,7 +80,7 @@ public class RegistrationPacketLogic<P extends RegistrationPacket> extends Logic
 
         for (var guest : guests) {
             var guestToCreate = new Guest(null, presentParticipantId, registrationId.get(), guest.getRawGuestName(), null, guest.getRelationship(), null);
-            Optional<Long> guestId = guestLogic.isAlreadyRecorded(guestToCreate) ? Optional.empty() : guestLogic.insertNew(guestToCreate);
+            Optional<Long> guestId = guestLogic.isAlreadyRecorded(guestToCreate) ? Optional.empty() : guestLogic.insertNew(actorId, guestToCreate);
             if (guestId.isEmpty()) {
                 LOGGER.error("Failed to insert a guest.");
                 return Optional.empty();

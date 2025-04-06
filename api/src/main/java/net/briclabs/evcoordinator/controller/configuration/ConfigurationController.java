@@ -1,6 +1,7 @@
 package net.briclabs.evcoordinator.controller.configuration;
 
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.ConfigurationLogic;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.controller.ApiController;
@@ -32,7 +33,7 @@ import org.springframework.web.client.HttpClientErrorException;
 @CrossOrigin(
         origins = "${app.cors.origins}",
         allowedHeaders = "*",
-        methods = { RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT }
+        methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT}
 )
 @EnableMethodSecurity
 @Validated
@@ -45,8 +46,8 @@ public class ConfigurationController<P extends Configuration> extends ApiControl
     > implements WriteController<P>, ReadController<Configuration> {
 
     @Autowired
-    public ConfigurationController(DSLContext dslContext) {
-        super(dslContext, new ConfigurationLogic<>(dslContext));
+    public ConfigurationController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new ConfigurationLogic<>(objectMapper, dslContext));
     }
 
     @Override
@@ -80,7 +81,7 @@ public class ConfigurationController<P extends Configuration> extends ApiControl
     public ResponseEntity<Long> create(@RequestBody P configuration) throws HttpClientErrorException {
         return logic.isAlreadyRecorded(configuration)
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(configuration).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.insertNew(getActorId(), configuration).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
@@ -88,7 +89,7 @@ public class ConfigurationController<P extends Configuration> extends ApiControl
     @ResponseStatus(HttpStatus.OK)
     @PreAuthorize("hasAuthority('evcoordinator:admin')")
     public ResponseEntity<Integer> update(@RequestBody P updatedConfiguration) {
-        int countOfRecordsUpdated = logic.updateExisting(updatedConfiguration);
+        int countOfRecordsUpdated = logic.updateExisting(getActorId(), updatedConfiguration);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 }

@@ -1,5 +1,6 @@
 package net.briclabs.evcoordinator.controller.registration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.RegistrationLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
@@ -47,8 +48,8 @@ public class RegistrationController<P extends Registration> extends ApiControlle
     > implements WriteController<P>, ReadController<RegistrationWithLabels>, DeleteEndpoint {
 
     @Autowired
-    public RegistrationController(DSLContext dslContext) {
-        super(dslContext, new RegistrationLogic<>(dslContext));
+    public RegistrationController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new RegistrationLogic<>(objectMapper, dslContext));
     }
 
     @Override
@@ -77,14 +78,14 @@ public class RegistrationController<P extends Registration> extends ApiControlle
     public ResponseEntity<Long> create(@RequestBody P registration) throws HttpClientErrorException {
         return logic.isAlreadyRecorded(registration)
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(registration).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.insertNew(getActorId(), registration).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
     public ResponseEntity<Integer> update(@RequestBody P updatedRegistration) {
-        int countOfRecordsUpdated = logic.updateExisting(updatedRegistration);
+        int countOfRecordsUpdated = logic.updateExisting(getActorId(), updatedRegistration);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 
@@ -92,7 +93,7 @@ public class RegistrationController<P extends Registration> extends ApiControlle
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
-        logic.delete(id);
+        logic.delete(getActorId(), id);
         return ResponseEntity.noContent().build();
     }
 }
