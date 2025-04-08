@@ -8,6 +8,7 @@ import net.briclabs.evcoordinator.generated.tables.records.GuestRecord;
 import net.briclabs.evcoordinator.generated.tables.records.GuestWithLabelsRecord;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
+import org.jooq.impl.DSL;
 
 import java.util.List;
 import java.util.Map;
@@ -25,7 +26,7 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
     public GuestLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Guest.class, GUEST, GUEST.ID);
         this.guestWithLabelsLogic = new GuestLogic.GuestWithLabelsLogic(objectMapper, jooq);
-        this.historyLogic = new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, jooq), jooq);
+        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
     }
 
     public GuestLogic.GuestWithLabelsLogic getGuestWithLabelsLogic() {
@@ -77,13 +78,13 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
                 .set(getTable().REGISTRATION_ID, update.getRegistrationId())
                 .set(getTable().INVITEE_PROFILE_ID, update.getInviteeProfileId())
                 .set(getTable().GUEST_PROFILE_ID, update.getGuestProfileId())
-                .set(getTable().RAW_GUEST_NAME, update.getRelationship())
+                .set(getTable().RAW_GUEST_NAME, update.getRawGuestName())
                 .set(getTable().RELATIONSHIP, update.getRelationship())
                 .where(getIdColumn().eq(update.getId()))
                 .and(
                         getTable().REGISTRATION_ID.notEqual(update.getRegistrationId())
                                 .or(getTable().INVITEE_PROFILE_ID.notEqual(update.getInviteeProfileId()))
-                                .or(getTable().GUEST_PROFILE_ID.notEqual(update.getGuestProfileId()))
+                                .or(DSL.coalesce(getTable().GUEST_PROFILE_ID, 0).notEqual(update.getGuestProfileId()))
                                 .or(getTable().RAW_GUEST_NAME.notEqual(update.getRawGuestName()))
                                 .or(getTable().RELATIONSHIP.notEqual(update.getRelationship()))
                 ).execute();

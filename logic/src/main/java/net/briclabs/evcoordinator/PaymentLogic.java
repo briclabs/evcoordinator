@@ -26,7 +26,7 @@ public class PaymentLogic<P extends Payment> extends Logic<PaymentRecord, Paymen
     public PaymentLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Payment.class, PAYMENT, PAYMENT.ID);
         this.paymentWithLabelsLogic = new PaymentWithLabelsLogic(objectMapper, jooq);
-        this.historyLogic = new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, jooq), jooq);
+        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
     }
 
     public PaymentWithLabelsLogic getPaymentWithLabelsLogic() {

@@ -19,7 +19,7 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
 
     public ConfigurationLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Configuration.class, CONFIGURATION, CONFIGURATION.ID);
-        this.historyLogic = new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, jooq), jooq);
+        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
     }
 
     @Override

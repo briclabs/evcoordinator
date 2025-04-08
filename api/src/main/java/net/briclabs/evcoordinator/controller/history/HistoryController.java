@@ -3,7 +3,6 @@ package net.briclabs.evcoordinator.controller.history;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.HistoryLogic;
 import net.briclabs.evcoordinator.ListWithCount;
-import net.briclabs.evcoordinator.ParticipantLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
@@ -42,7 +41,7 @@ public class HistoryController<P extends DataHistory> extends ApiController<
 
     @Autowired
     public HistoryController(ObjectMapper objectMapper, DSLContext dslContext) {
-        super(objectMapper, dslContext, new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, dslContext), dslContext));
+        super(objectMapper, dslContext, new HistoryLogic<>(objectMapper, dslContext));
     }
 
     @Override

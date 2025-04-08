@@ -34,7 +34,7 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
         super(objectMapper, jooq, Registration.class, REGISTRATION, REGISTRATION.ID);
         this.registrationWithLabelsLogic = new RegistrationWithLabelsLogic(objectMapper, jooq);
         this.guestLogic = new GuestLogic<>(objectMapper, jooq);
-        this.historyLogic = new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, jooq), jooq);
+        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
     }
 
     public RegistrationWithLabelsLogic getRegistrationWithLabelsLogic() {

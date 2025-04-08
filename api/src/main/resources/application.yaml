@@ -4,8 +4,6 @@ spring:
     username: ${POSTGRES_USER:postgres-user}
     password: ${POSTGRES_PASSWORD:postgres-pass}
     driver-class-name: org.postgresql.Driver
-  liquibase:
-    drop-first: true
   jooq:
     sql-dialect: Postgres
   security:

@@ -6,6 +6,7 @@ import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.generated.tables.records.ParticipantRecord;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
+import org.jooq.impl.DSL;
 import org.jooq.tools.StringUtils;
 
 import java.time.format.DateTimeFormatter;
@@ -30,7 +31,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
 
     public ParticipantLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Participant.class, PARTICIPANT, PARTICIPANT.ID);
-        this.historyLogic = new HistoryLogic<>(objectMapper, this, jooq);
+        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
     }
 
     /**
@@ -84,7 +85,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                 entry(getTable().ADDR_EMAIL.getName(), emailAddressToSearchFor),
                 entry(getTable().PARTICIPANT_TYPE.getName(), participantTypeToSearchFor)
         );
-        return fetchByCriteria(false, criteria, getIdColumn().getName(), false, 0, 1).count() > 0;
+        return fetchByCriteria(true, criteria, getIdColumn().getName(), false, 0, 1).count() > 0;
     }
 
     @Override
@@ -172,10 +173,10 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                                 .or(getTable().SPONSOR.notEqual(update.getSponsor()))
                                 .or(getTable().NAME_FIRST.notEqual(update.getNameFirst()))
                                 .or(getTable().NAME_LAST.notEqual(update.getNameLast()))
-                                .or(getTable().NAME_NICK.notEqual(update.getNameNick()))
+                                .or(DSL.coalesce(getTable().NAME_NICK, "").notEqual(update.getNameNick()))
                                 .or(getTable().DOB.notEqual(update.getDob()))
                                 .or(getTable().ADDR_STREET_1.notEqual(update.getAddrStreet_1()))
-                                .or(getTable().ADDR_STREET_2.notEqual(update.getAddrStreet_2()))
+                                .or(DSL.coalesce(getTable().ADDR_STREET_2, "").notEqual(update.getAddrStreet_2()))
                                 .or(getTable().ADDR_CITY.notEqual(update.getAddrCity()))
                                 .or(getTable().ADDR_STATE_ABBR.notEqual(update.getAddrStateAbbr()))
                                 .or(getTable().ADDR_ZIP.notEqual(update.getAddrZip()))

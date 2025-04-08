@@ -27,7 +27,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
 
     public EventInfoLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, EventInfo.class, EVENT_INFO, EVENT_INFO.ID);
-        this.historyLogic = new HistoryLogic<>(objectMapper, new ParticipantLogic<>(objectMapper, jooq), jooq);
+        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
         this.paymentLogic = new PaymentLogic<>(objectMapper, jooq);
         this.guestLogic = new GuestLogic<>(objectMapper, jooq);
         this.registrationLogic = new RegistrationLogic<>(objectMapper, jooq);
