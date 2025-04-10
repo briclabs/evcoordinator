@@ -1,15 +1,15 @@
-package net.briclabs.evcoordinator.controller.payment;
+package net.briclabs.evcoordinator.controller.transaction;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.ListWithCount;
-import net.briclabs.evcoordinator.PaymentLogic;
+import net.briclabs.evcoordinator.TransactionLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.controller.DeleteEndpoint;
 import net.briclabs.evcoordinator.controller.ReadController;
 import net.briclabs.evcoordinator.controller.WriteController;
-import net.briclabs.evcoordinator.generated.tables.pojos.Payment;
-import net.briclabs.evcoordinator.generated.tables.pojos.PaymentWithLabels;
-import net.briclabs.evcoordinator.generated.tables.records.PaymentRecord;
+import net.briclabs.evcoordinator.generated.tables.pojos.TransactionWithLabels;
+import net.briclabs.evcoordinator.generated.tables.pojos.Transaction_;
+import net.briclabs.evcoordinator.generated.tables.records.Transaction_Record;
 import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,29 +39,29 @@ import org.springframework.web.client.HttpClientErrorException;
 )
 @EnableMethodSecurity
 @Validated
-@RequestMapping(ApiController.V1 + "/payment")
-public class PaymentController<P extends Payment> extends ApiController<
-        PaymentRecord,
-        Payment,
-        net.briclabs.evcoordinator.generated.tables.Payment,
-        PaymentLogic<P>
-    > implements WriteController<P>, ReadController<PaymentWithLabels>, DeleteEndpoint {
+@RequestMapping(ApiController.V1 + "/transactions")
+public class TransactionController<P extends Transaction_> extends ApiController<
+        Transaction_Record,
+        Transaction_,
+        net.briclabs.evcoordinator.generated.tables.Transaction_,
+        TransactionLogic<P>
+    > implements WriteController<P>, ReadController<TransactionWithLabels>, DeleteEndpoint {
 
     @Autowired
-    public PaymentController(ObjectMapper objectMapper, DSLContext dslContext) {
-        super(objectMapper, dslContext, new PaymentLogic<>(objectMapper, dslContext));
+    public TransactionController(ObjectMapper objectMapper, DSLContext dslContext) {
+        super(objectMapper, dslContext, new TransactionLogic<>(objectMapper, dslContext));
     }
 
     @Override
     @GetMapping(value = "/{id}")
-    public ResponseEntity<PaymentWithLabels> findById(@PathVariable("id") Long id) {
-        return logic.getPaymentWithLabelsLogic().fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    public ResponseEntity<TransactionWithLabels> findById(@PathVariable("id") Long id) {
+        return logic.getTransactionWithLabelsLogic().fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @Override
     @PostMapping(path = "/search")
-    public ResponseEntity<ListWithCount<PaymentWithLabels>> search(@RequestBody SearchRequest searchRequest) {
-        return ResponseEntity.ok(logic.getPaymentWithLabelsLogic().fetchByCriteria(
+    public ResponseEntity<ListWithCount<TransactionWithLabels>> search(@RequestBody SearchRequest searchRequest) {
+        return ResponseEntity.ok(logic.getTransactionWithLabelsLogic().fetchByCriteria(
                 searchRequest.searchConfiguration().exactMatch(),
                 searchRequest.searchCriteria(),
                 searchRequest.searchConfiguration().sortColumn(),
@@ -74,17 +74,17 @@ public class PaymentController<P extends Payment> extends ApiController<
     @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<Long> create(@RequestBody P payment) throws HttpClientErrorException {
-        return logic.isAlreadyRecorded(payment)
+    public ResponseEntity<Long> create(@RequestBody P transaction) throws HttpClientErrorException {
+        return logic.isAlreadyRecorded(transaction)
                 ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(getActorId(), payment).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+                : logic.insertNew(getActorId(), transaction).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<Integer> update(@RequestBody P updatedPayment) {
-        int countOfRecordsUpdated = logic.updateExisting(getActorId(), updatedPayment);
+    public ResponseEntity<Integer> update(@RequestBody P updatedTransaction) {
+        int countOfRecordsUpdated = logic.updateExisting(getActorId(), updatedTransaction);
         return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
     }
 

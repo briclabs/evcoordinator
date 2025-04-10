@@ -16,6 +16,27 @@ services:
     env_file:
       - .env
 
+  liquibase:
+    container_name: evcoordinator-liquibase
+    image: liquibase/liquibase:4.31.1-alpine
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ../data/src/main/resources/changelog:/liquibase/changelog
+    networks:
+      - evcoordinator_default
+    command: >
+      --driver=org.postgresql.Driver
+      --url="${POSTGRES_URL}"
+      --changeLogFile="changelog/db.changelog-master.yaml"
+      --username="${POSTGRES_USER}"
+      --password="${POSTGRES_PASSWORD}"
+      --logLevel=debug
+      update
+
   db:
     container_name: evcoordinator-db
     image: 'postgres:15.0-alpine3.16'
@@ -25,8 +46,8 @@ services:
       timeout: 5s
       retries: 5
 # Uncomment this to allow for direct DB access.
-#    ports:
-#      - "5432:5432"
+    ports:
+      - "5432:5432"
     expose:
       - 5432
     networks:

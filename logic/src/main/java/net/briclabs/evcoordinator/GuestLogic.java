@@ -61,7 +61,7 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
                     null,
                     actorId,
                     HistoryLogic.ActionType.INSERTED.name(),
-                    getTable().getName(),
+                    getTable().getName().toUpperCase(),
                     convertToJson(pojo),
                     JSON.json("{}"),
                     null
@@ -93,7 +93,7 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
                     null,
                     actorId,
                     HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName(),
+                    getTable().getName().toUpperCase(),
                     convertToJson(update),
                     convertToJson(originalRecord),
                     null
@@ -111,7 +111,7 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
                     null,
                     actorId,
                     HistoryLogic.ActionType.DELETED.name(),
-                    getTable().getName(),
+                    getTable().getName().toUpperCase(),
                     JSON.json("{}"),
                     convertToJson(originalRecord),
                     null

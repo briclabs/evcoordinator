@@ -2,7 +2,7 @@
 
 -- changeset liquibase:1
 CREATE TABLE IF NOT EXISTS table_ref ( table_ref text PRIMARY KEY );
-INSERT INTO table_ref (table_ref) VALUES ('CONFIGURATION'), ('PARTICIPANT'), ('EVENT_INFO'), ('REGISTRATION'), ('GUEST'), ('PAYMENT');
+INSERT INTO table_ref (table_ref) VALUES ('CONFIGURATION'), ('PARTICIPANT'), ('EVENT_INFO'), ('REGISTRATION'), ('GUEST'), ('TRANSACTION_');
 
 CREATE TABLE IF NOT EXISTS data_history_type ( history_type text PRIMARY KEY );
 INSERT INTO data_history_type (history_type) VALUES ('INSERTED'), ('UPDATED'), ('DELETED');
@@ -19,14 +19,11 @@ INSERT INTO emergency_contact_relationship_type (emergency_contact_relationship_
 CREATE TABLE IF NOT EXISTS event_status ( event_status_type text PRIMARY KEY );
 INSERT INTO event_status (event_status_type) VALUES ('CURRENT'), ('PAST'), ('CANCELLED');
 
-CREATE TABLE IF NOT EXISTS payment_instrument ( payment_instrument_type text PRIMARY KEY );
-INSERT INTO payment_instrument (payment_instrument_type) VALUES ('ELECTRONIC'), ('CHECK'), ('CASH');
+CREATE TABLE IF NOT EXISTS transaction_instrument ( transaction_instrument_type text PRIMARY KEY );
+INSERT INTO transaction_instrument (transaction_instrument_type) VALUES ('ELECTRONIC'), ('CHECK'), ('CASH');
 
-CREATE TABLE IF NOT EXISTS payment_type ( payment_type text PRIMARY KEY );
-INSERT INTO payment_type (payment_type) VALUES ('EXPENSE'), ('INCOME');
-
-CREATE TABLE IF NOT EXISTS payment_action ( payment_action_type text PRIMARY KEY );
-INSERT INTO payment_action (payment_action_type) VALUES ('SENT'), ('REFUNDED');
+CREATE TABLE IF NOT EXISTS transaction_type ( transaction_type text PRIMARY KEY );
+INSERT INTO transaction_type (transaction_type) VALUES ('INVOICE'), ('EXPENSE'), ('INCOME');
 
 CREATE TABLE IF NOT EXISTS configuration (
    id bigint GENERATED ALWAYS AS IDENTITY,
@@ -100,15 +97,15 @@ CREATE TABLE IF NOT EXISTS guest (
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
-CREATE TABLE IF NOT EXISTS payment (
+CREATE TABLE IF NOT EXISTS transaction_ (
     id bigint GENERATED ALWAYS AS IDENTITY,
     event_info_id bigint REFERENCES event_info(id) NOT NULL,
     actor_id bigint REFERENCES participant(id) NOT NULL,
-    payment_action_type text REFERENCES payment_action(payment_action_type) NOT NULL,
     recipient_id bigint REFERENCES participant(id) NOT NULL,
     amount decimal(16, 8) NOT NULL,
-    payment_type text REFERENCES payment_type(payment_type) NOT NULL,
-    instrument_type text REFERENCES payment_instrument(payment_instrument_type) NOT NULL,
+    transaction_type text REFERENCES transaction_type(transaction_type) NOT NULL,
+    instrument_type text REFERENCES transaction_instrument(transaction_instrument_type) NOT NULL,
+    memo text,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
@@ -173,9 +170,7 @@ SELECT
     p.time_recorded AS participant_time_recorded,
     e.event_name,
     e.event_title,
-    STRING_AGG(
-        '{' || 'guest_profile_id:' ||  g.guest_profile_id || ', raw_guest_name:' || g.raw_guest_name || ', relationship:' || g.relationship || ', time_recorded:' || g.time_recorded || '}', ','
-    ) AS guests
+    JSONB_AGG(JSONB_BUILD_OBJECT('guest_profile_id',  g.guest_profile_id, 'raw_guest_name', g.raw_guest_name, 'relationship', g.relationship, 'time_recorded', g.time_recorded)) AS guests
 FROM
     registration r
         JOIN
@@ -208,9 +203,9 @@ group by r.id,
          e.event_name,
          e.event_title;
 
-CREATE OR REPLACE VIEW payment_with_labels AS
+CREATE OR REPLACE VIEW transaction_with_labels AS
     SELECT
-        p.*,
+        t.*,
         e.event_name,
         e.event_title,
         pa.name_first AS actor_name_first,
@@ -218,13 +213,13 @@ CREATE OR REPLACE VIEW payment_with_labels AS
         pr.name_first AS recipient_name_first,
         pr.name_last AS recipient_name_last
     FROM
-        payment p
+        transaction_ t
             JOIN
-        event_info e ON p.event_info_id = e.id
+        event_info e ON t.event_info_id = e.id
             JOIN
-        participant pa ON p.actor_id = pa.id
+        participant pa ON t.actor_id = pa.id
             JOIN
-        participant pr ON p.recipient_id = pr.id;
+        participant pr ON t.recipient_id = pr.id;
 
 CREATE OR REPLACE VIEW data_history_with_labels AS
     SELECT
@@ -235,3 +230,116 @@ CREATE OR REPLACE VIEW data_history_with_labels AS
         data_history h
             JOIN
         participant a ON h.actor_id = a.id;
+
+CREATE OR REPLACE VIEW event_statistics AS
+    WITH
+        event AS (
+            SELECT
+                e.id AS event_info_id,
+                e.event_name,
+                e.event_title,
+                e.event_status,
+                e.date_start,
+                e.date_end
+            FROM
+                event_info e
+        ),
+        invoices AS (
+            SELECT
+                t.event_info_id,
+                JSONB_AGG(JSON_BUILD_OBJECT('memo', t.memo, 'amount', t.amount)) AS itemization,
+                COUNT(t.id) AS total_count,
+                SUM(t.amount) AS total_amount
+            FROM
+                transaction_ t
+            WHERE
+                t.transaction_type = 'INVOICE'
+            GROUP BY
+                t.event_info_id
+        ),
+        expenses AS (
+            SELECT
+                t.event_info_id,
+                COUNT(t.id) AS total_count,
+                SUM(t.amount) AS total_amount
+            FROM
+                transaction_ t
+            WHERE
+                t.transaction_type = 'EXPENSES'
+            GROUP BY
+                t.event_info_id
+        ),
+        income AS (
+            SELECT
+                t.event_info_id,
+                COUNT(t.id) AS total_count,
+                SUM(t.amount) AS total_amount
+            FROM
+                transaction_ t
+            WHERE
+                t.transaction_type = 'INCOME'
+            GROUP BY
+                t.event_info_id
+        ),
+        registered_attendees AS (
+            SELECT
+                a.event_info_id,
+                COUNT(a.participant_id) AS total_count,
+                SUM(a.donation_pledge) AS total_pledged
+            FROM
+                registration a
+            GROUP BY
+                a.event_info_id
+        ),
+        unregistered_guests AS (
+            SELECT
+                r.event_info_id,
+                COUNT(g.id) AS total_count
+            FROM
+                registration r
+                    JOIN
+                guest g ON g.registration_id = r.id AND g.relationship IN ('ADULT', 'CHILD') AND (g.guest_profile_id IS NULL OR g.guest_profile_id NOT IN (r.participant_id))
+            GROUP BY
+                r.event_info_id
+        )
+    SELECT
+        e.event_info_id AS event_id,
+        e.event_name,
+        e.event_title,
+        e.event_status,
+        e.date_start,
+        e.date_end,
+        invoices.itemization AS invoices,
+        ra.total_count AS registered_attendees_count,
+        ug.total_count AS unregistered_guest_count,
+        invoices.total_amount AS total_invoiced,
+        expenses.total_amount AS total_expenses,
+        ra.total_pledged,
+        income.total_amount AS total_income,
+        ( income.total_amount / ra.total_pledged ) * 100 AS percentage_pledged_received
+    FROM
+        event e
+            LEFT JOIN
+        invoices ON invoices.event_info_id = e.event_info_id
+            LEFT JOIN
+        expenses ON expenses.event_info_id = e.event_info_id
+            LEFT JOIN
+        income ON income.event_info_id = e.event_info_id
+            LEFT JOIN
+        registered_attendees ra ON ra.event_info_id = e.event_info_id
+            LEFT JOIN
+        unregistered_guests ug ON ug.event_info_id = e.event_info_id
+    GROUP BY
+        e.event_info_id,
+        e.event_name,
+        e.event_title,
+        e.event_status,
+        e.date_start,
+        e.date_end,
+        invoices.itemization,
+        ra.total_count,
+        ug.total_count,
+        invoices.total_amount,
+        expenses.total_amount,
+        ra.total_pledged,
+        income.total_amount;

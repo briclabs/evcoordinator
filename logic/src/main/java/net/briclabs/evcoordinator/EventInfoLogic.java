@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
 import net.briclabs.evcoordinator.generated.tables.pojos.Guest;
-import net.briclabs.evcoordinator.generated.tables.pojos.Payment;
 import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
+import net.briclabs.evcoordinator.generated.tables.pojos.Transaction_;
 import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
@@ -21,14 +21,14 @@ import static net.briclabs.evcoordinator.generated.tables.Registration.REGISTRAT
 
 public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, EventInfo, net.briclabs.evcoordinator.generated.tables.EventInfo> implements WriteLogic<P>, DeletableRecord {
     private final HistoryLogic<DataHistory> historyLogic;
-    private final PaymentLogic<Payment> paymentLogic;
+    private final TransactionLogic<Transaction_> transactionLogic;
     private final GuestLogic<Guest> guestLogic;
     private final RegistrationLogic<Registration> registrationLogic;
 
     public EventInfoLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, EventInfo.class, EVENT_INFO, EVENT_INFO.ID);
         this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
-        this.paymentLogic = new PaymentLogic<>(objectMapper, jooq);
+        this.transactionLogic = new TransactionLogic<>(objectMapper, jooq);
         this.guestLogic = new GuestLogic<>(objectMapper, jooq);
         this.registrationLogic = new RegistrationLogic<>(objectMapper, jooq);
     }
@@ -75,7 +75,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
                     null,
                     actorId,
                     HistoryLogic.ActionType.INSERTED.name(),
-                    getTable().getName(),
+                    getTable().getName().toUpperCase(),
                     convertToJson(pojo),
                     JSON.json("{}"),
                     null
@@ -107,7 +107,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
                     null,
                     actorId,
                     HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName(),
+                    getTable().getName().toUpperCase(),
                     convertToJson(update),
                     convertToJson(originalRecord),
                     null
@@ -119,7 +119,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
     @Override
     public void delete(long actorId, long idToDelete) {
         var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RuntimeException("Event Info not found: " + idToDelete));
-        deleteCorrespondingPayments(actorId, idToDelete);
+        deleteCorrespondingTransactions(actorId, idToDelete);
         deleteCorrespondingRegistrationsAndGuests(actorId, idToDelete);
 
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
@@ -128,7 +128,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
                     null,
                     actorId,
                     HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName(),
+                    getTable().getName().toUpperCase(),
                     JSON.json("{}"),
                     convertToJson(originalRecord),
                     null
@@ -146,7 +146,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
         guestLogic.getGuestIdsByRegistrationIds(registrationIdsToDelete).forEach(guestIdToDelete -> guestLogic.delete(actorId, guestIdToDelete));
     }
 
-    private void deleteCorrespondingPayments(long actorId, long eventId) {
-        paymentLogic.getPaymentIdsByEventId(eventId).forEach(paymentIdToDelete -> paymentLogic.delete(actorId, paymentIdToDelete));
+    private void deleteCorrespondingTransactions(long actorId, long eventId) {
+        transactionLogic.getTransactionIdsByEventId(eventId).forEach(transactionIdToDelete -> transactionLogic.delete(actorId, transactionIdToDelete));
     }
 }

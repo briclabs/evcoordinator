@@ -67,7 +67,7 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
                     null,
                     actorId,
                     HistoryLogic.ActionType.INSERTED.name(),
-                    getTable().getName(),
+                    getTable().getName().toUpperCase(),
                     convertToJson(pojo),
                     JSON.json("{}"),
                     null
@@ -104,7 +104,7 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
                     null,
                     actorId,
                     HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName(),
+                    getTable().getName().toUpperCase(),
                     convertToJson(update),
                     convertToJson(originalRecord),
                     null

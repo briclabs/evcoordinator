@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.jooq.JSON;
+import org.jooq.JSONB;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -17,6 +18,7 @@ public class JacksonConfig {
 
         SimpleModule module = new SimpleModule();
         module.addSerializer(JSON.class, new JsonSerializer());
+        module.addSerializer(JSONB.class, new JsonbSerializer());
         objectMapper.registerModule(module);
 
         objectMapper.registerModule(new JavaTimeModule());
