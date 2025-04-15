@@ -7,6 +7,7 @@ import net.briclabs.evcoordinator.generated.tables.records.DataHistoryRecord;
 import net.briclabs.evcoordinator.generated.tables.records.DataHistoryWithLabelsRecord;
 import org.jooq.DSLContext;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 
@@ -14,15 +15,16 @@ import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.Tables.DATA_HISTORY_WITH_LABELS;
 import static net.briclabs.evcoordinator.generated.tables.DataHistory.DATA_HISTORY;
 
-public class HistoryLogic<P extends DataHistory> extends Logic<DataHistoryRecord, DataHistory, net.briclabs.evcoordinator.generated.tables.DataHistory> implements WriteLogic<P> {
+public class HistoryLogic extends WriteLogic<DataHistoryRecord, DataHistory, net.briclabs.evcoordinator.generated.tables.DataHistory> {
+
+    /**
+     * Represents the type of action performed in the context of data history management.
+     */
     public enum ActionType {
         INSERTED,
         UPDATED,
-        DELETED;
+        DELETED
     }
-
-
-    private final DataHistoryWithLabelsLogic dataHistoryWithLabelsLogic;
 
     /**
      * Constructor for the HistoryLogic class, initializing components required for data history management.
@@ -32,15 +34,10 @@ public class HistoryLogic<P extends DataHistory> extends Logic<DataHistoryRecord
      */
     public HistoryLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, DataHistory.class, DATA_HISTORY, DATA_HISTORY.ID);
-        this.dataHistoryWithLabelsLogic = new DataHistoryWithLabelsLogic(objectMapper, jooq);
-    }
-
-    public DataHistoryWithLabelsLogic getDataHistoryWithLabelsLogic() {
-        return dataHistoryWithLabelsLogic;
     }
 
     @Override
-    public boolean isAlreadyRecorded(P pojo) {
+    public boolean isAlreadyRecorded(DataHistory pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().ACTOR_ID.getName(), Long.toString(pojo.getActorId())),
                 entry(getTable().ACTION_NAME.getName(), pojo.getActionName()),
@@ -51,7 +48,7 @@ public class HistoryLogic<P extends DataHistory> extends Logic<DataHistoryRecord
     }
 
     @Override
-    public Optional<Long> insertNew(long actorId, P pojo) {
+    public Optional<Long> insertNew(long actorId, DataHistory pojo) {
         if (actorId > 0) {
             return jooq
                     .insertInto(getTable())
@@ -68,7 +65,7 @@ public class HistoryLogic<P extends DataHistory> extends Logic<DataHistoryRecord
     }
 
     @Override
-    public int updateExisting(long actorId, P update) {
+    public int updateExisting(long actorId, DataHistory update) {
         throw new UnsupportedOperationException("History records cannot be updated. Use the insertNew method to insert a new record.");
     }
 
@@ -80,5 +77,10 @@ public class HistoryLogic<P extends DataHistory> extends Logic<DataHistoryRecord
         public DataHistoryWithLabelsLogic(ObjectMapper objectMapper, DSLContext jooq) {
             super(objectMapper, jooq, DataHistoryWithLabels.class, DATA_HISTORY_WITH_LABELS, DATA_HISTORY_WITH_LABELS.ID);
         }
+    }
+
+    @Override
+    public Map<String, String> validate(DataHistory pojo) {
+        return Collections.emptyMap();
     }
 }

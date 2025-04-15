@@ -41,6 +41,15 @@ public abstract class Logic<R extends TableRecordImpl<R>, P extends Serializable
     }
 
     /**
+     * Provides access to the {@link ObjectMapper} instance used by this logic.
+     *
+     * @return the {@code ObjectMapper} instance associated with this logic.
+     */
+    protected ObjectMapper getObjectMapper() {
+        return objectMapper;
+    }
+
+    /**
      * Converts the provided Plain Old Java Object (POJO) to its JSON representation.
      *
      * @param pojo the POJO to be converted to a JSON object.

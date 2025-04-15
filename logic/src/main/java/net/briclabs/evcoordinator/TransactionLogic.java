@@ -7,11 +7,13 @@ import net.briclabs.evcoordinator.generated.tables.pojos.TransactionWithLabels;
 import net.briclabs.evcoordinator.generated.tables.pojos.Transaction_;
 import net.briclabs.evcoordinator.generated.tables.records.TransactionWithLabelsRecord;
 import net.briclabs.evcoordinator.generated.tables.records.Transaction_Record;
+import net.briclabs.evcoordinator.validation.TransactionValidator;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
 import org.jooq.impl.DSL;
 
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,23 +22,16 @@ import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.TransactionWithLabels.TRANSACTION_WITH_LABELS;
 import static net.briclabs.evcoordinator.generated.tables.Transaction_.TRANSACTION_;
 
-public class TransactionLogic<P extends Transaction_> extends Logic<Transaction_Record, Transaction_, net.briclabs.evcoordinator.generated.tables.Transaction_> implements WriteLogic<P>, DeletableRecord {
-    private final HistoryLogic<DataHistory> historyLogic;
-
-    private final TransactionWithLabelsLogic transactionWithLabelsLogic;
+public class TransactionLogic extends WriteAndDeleteLogic<Transaction_Record, Transaction_, net.briclabs.evcoordinator.generated.tables.Transaction_> {
+    private final HistoryLogic historyLogic;
 
     public TransactionLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Transaction_.class, TRANSACTION_, TRANSACTION_.ID);
-        this.transactionWithLabelsLogic = new TransactionWithLabelsLogic(objectMapper, jooq);
-        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
-    }
-
-    public TransactionWithLabelsLogic getTransactionWithLabelsLogic() {
-        return transactionWithLabelsLogic;
+        this.historyLogic = new HistoryLogic(objectMapper, jooq);
     }
 
     @Override
-    public boolean isAlreadyRecorded(P pojo) {
+    public boolean isAlreadyRecorded(Transaction_ pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().ACTOR_ID.getName(), Long.toString(pojo.getActorId())),
                 entry(getTable().RECIPIENT_ID.getName(), Long.toString(pojo.getRecipientId())),
@@ -49,7 +44,7 @@ public class TransactionLogic<P extends Transaction_> extends Logic<Transaction_
     }
 
     @Override
-    public Optional<Long> insertNew(long actorId, P pojo) {
+    public Optional<Long> insertNew(long actorId, Transaction_ pojo) {
         Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().ACTOR_ID, pojo.getActorId())
@@ -77,8 +72,15 @@ public class TransactionLogic<P extends Transaction_> extends Logic<Transaction_
     }
 
     @Override
-    public int updateExisting(long actorId, P update) {
-        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Transaction not found: " + update.getId()));
+    public int updateExisting(long actorId, Transaction_ update) throws TransactionException {
+        if (update.getId() == null) {
+            throw new TransactionException(
+                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    "ID %d to update was missing.".formatted(update.getId()));
+        }
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new TransactionException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().ACTOR_ID, update.getActorId())
@@ -113,8 +115,10 @@ public class TransactionLogic<P extends Transaction_> extends Logic<Transaction_
     }
 
     @Override
-    public void delete(long actorId, long idToDelete) {
-        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RuntimeException("Transaction not found: " + idToDelete));
+    public void delete(long actorId, long idToDelete) throws TransactionException {
+        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new TransactionException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Transaction to delete was not found."),
+                "Transaction to delete with ID %d was not found.".formatted(idToDelete)));
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
             historyLogic.insertNew(actorId, new DataHistory(
@@ -127,6 +131,11 @@ public class TransactionLogic<P extends Transaction_> extends Logic<Transaction_
                     null
             ));
         }
+    }
+
+    @Override
+    public Map<String, String> validate(Transaction_ pojo) {
+        return TransactionValidator.of(pojo).getMessages();
     }
 
     /**
@@ -145,6 +154,12 @@ public class TransactionLogic<P extends Transaction_> extends Logic<Transaction_
     public static class TransactionWithLabelsLogic extends Logic<TransactionWithLabelsRecord, TransactionWithLabels, net.briclabs.evcoordinator.generated.tables.TransactionWithLabels> {
         public TransactionWithLabelsLogic(ObjectMapper objectMapper, DSLContext jooq) {
             super(objectMapper, jooq, TransactionWithLabels.class, TRANSACTION_WITH_LABELS, TRANSACTION_WITH_LABELS.ID);
+        }
+    }
+
+    public static class TransactionException extends LogicException {
+        public TransactionException(Map.Entry<String, String> publicMessage, String troubleshootingMessage) {
+            super(publicMessage, troubleshootingMessage);
         }
     }
 }

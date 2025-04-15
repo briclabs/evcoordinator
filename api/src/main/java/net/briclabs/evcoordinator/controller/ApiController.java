@@ -1,37 +1,26 @@
 package net.briclabs.evcoordinator.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.briclabs.evcoordinator.Logic;
 import net.briclabs.evcoordinator.ParticipantLogic;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import org.jooq.DSLContext;
-import org.jooq.impl.TableImpl;
-import org.jooq.impl.TableRecordImpl;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
-import java.io.Serializable;
 import java.util.Optional;
 
-public abstract class ApiController<
-        R extends TableRecordImpl<R>,
-        P extends Serializable,
-        T extends TableImpl<R>,
-        L extends Logic<R, P, T>
-    > {
+public abstract class ApiController {
 
     public static final String V1 = "v1";
 
     protected final DSLContext jooq;
 
-    protected final L logic;
-    protected final ParticipantLogic<Participant> participantLogic;
+    private final ParticipantLogic participantLogic;
 
-    public ApiController(ObjectMapper objectMapper, DSLContext dslContext, L logic) {
+    public ApiController(ObjectMapper objectMapper, DSLContext dslContext) {
         this.jooq = dslContext;
-        this.logic = logic;
-        this.participantLogic = new ParticipantLogic<>(objectMapper, jooq);
+        this.participantLogic = new ParticipantLogic(objectMapper, jooq);
     }
 
     /**

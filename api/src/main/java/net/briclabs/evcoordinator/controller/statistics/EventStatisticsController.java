@@ -11,6 +11,7 @@ import net.briclabs.evcoordinator.model.SearchRequest;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -31,12 +32,11 @@ import org.springframework.web.bind.annotation.RestController;
 @EnableMethodSecurity
 @Validated
 @RequestMapping(ApiController.V1 + "/statistics")
-public class EventStatisticsController<P extends EventStatistics> extends ApiController<
+public class EventStatisticsController extends ReadController<
         EventStatisticsRecord,
         EventStatistics,
         net.briclabs.evcoordinator.generated.tables.EventStatistics,
-        EventStatisticsLogic
-        > implements ReadController<EventStatistics> {
+        EventStatisticsLogic> {
 
     @Autowired
     public EventStatisticsController(ObjectMapper objectMapper, DSLContext dslContext) {
@@ -45,25 +45,20 @@ public class EventStatisticsController<P extends EventStatistics> extends ApiCon
 
     @Override
     @GetMapping(value = "/{id}")
-    public ResponseEntity<EventStatistics> findById(@PathVariable("id") Long id) {
-        return logic.fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @GetMapping(value = "/latest")
-    public ResponseEntity<EventStatistics> findLatest() {
-        return logic.fetchLatest().map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    @PreAuthorize("hasAuthority('evcoordinator:admin')")
+    public ResponseEntity<EventStatistics> fetchById(@PathVariable("id") Long id) {
+        return super.fetchById(id);
     }
 
     @Override
     @PostMapping(path = "/search")
+    @PreAuthorize("hasAuthority('evcoordinator:admin')")
     public ResponseEntity<ListWithCount<EventStatistics>> search(@RequestBody SearchRequest searchRequest) {
-        return ResponseEntity.ok(logic.fetchByCriteria(
-                searchRequest.searchConfiguration().exactMatch(),
-                searchRequest.searchCriteria(),
-                searchRequest.searchConfiguration().sortColumn(),
-                searchRequest.searchConfiguration().sortAsc(),
-                searchRequest.searchConfiguration().offset(),
-                searchRequest.searchConfiguration().max()
-        ));
+        return super.search(searchRequest);
+    }
+
+    @GetMapping(value = "/latest")
+    public ResponseEntity<EventStatistics> findLatest() {
+        return readLogic.fetchLatest().map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 }

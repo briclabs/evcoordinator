@@ -25,6 +25,7 @@ dependencies {
     api project(':data')
 
     implementation libs.apachecommonstext
+    implementation libs.commonsValidator
     implementation libs.jacksonAnnotations
     implementation libs.jacksonCore
     implementation libs.jacksonDatabind

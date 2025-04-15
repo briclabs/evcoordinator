@@ -8,12 +8,12 @@ import net.briclabs.evcoordinator.generated.tables.pojos.RegistrationWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.GuestRecord;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationRecord;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationWithLabelsRecord;
+import net.briclabs.evcoordinator.validation.RegistrationValidator;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
 import org.jooq.Result;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -22,27 +22,19 @@ import static net.briclabs.evcoordinator.generated.Tables.GUEST;
 import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION;
 import static net.briclabs.evcoordinator.generated.Tables.REGISTRATION_WITH_LABELS;
 
-public class RegistrationLogic<P extends Registration> extends Logic<RegistrationRecord, Registration, net.briclabs.evcoordinator.generated.tables.Registration> implements WriteLogic<P>, DeletableRecord {
-    private final HistoryLogic<DataHistory> historyLogic;
+public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, Registration, net.briclabs.evcoordinator.generated.tables.Registration> {
+    private final HistoryLogic historyLogic;
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RegistrationLogic.class);
-
-    private final RegistrationWithLabelsLogic registrationWithLabelsLogic;
-    private final GuestLogic<net.briclabs.evcoordinator.generated.tables.pojos.Guest> guestLogic;
+    private final GuestLogic guestLogic;
 
     public RegistrationLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Registration.class, REGISTRATION, REGISTRATION.ID);
-        this.registrationWithLabelsLogic = new RegistrationWithLabelsLogic(objectMapper, jooq);
-        this.guestLogic = new GuestLogic<>(objectMapper, jooq);
-        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
-    }
-
-    public RegistrationWithLabelsLogic getRegistrationWithLabelsLogic() {
-        return registrationWithLabelsLogic;
+        this.guestLogic = new GuestLogic(objectMapper, jooq);
+        this.historyLogic = new HistoryLogic(objectMapper, jooq);
     }
 
     @Override
-    public boolean isAlreadyRecorded(P registrationPojo) {
+    public boolean isAlreadyRecorded(Registration registrationPojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().EVENT_INFO_ID.getName(), Long.toString(registrationPojo.getEventInfoId())),
                 entry(getTable().SIGNATURE.getName(), registrationPojo.getSignature()),
@@ -52,7 +44,7 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
     }
 
     @Override
-    public Optional<Long> insertNew(long actorId, P pojo) {
+    public Optional<Long> insertNew(long actorId, Registration pojo) {
         Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().EVENT_INFO_ID, pojo.getEventInfoId())
@@ -77,44 +69,50 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
     }
 
     @Override
-    public int updateExisting(long actorId, P update) {
-        if (update.getId() != null) {
-            handleGuestUpdates(actorId, update.getId(), update.getParticipantId());
-            var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Registration not found: " + update.getId()));
-            int updatedRecords = jooq
-                    .update(getTable())
-                    .set(getTable().EVENT_INFO_ID, update.getEventInfoId())
-                    .set(getTable().SIGNATURE, update.getSignature())
-                    .set(getTable().DONATION_PLEDGE, update.getDonationPledge())
-                    .set(getTable().PARTICIPANT_ID, update.getParticipantId())
-                    .where(getIdColumn().eq(update.getId()))
-                    .and(
-                            getTable().EVENT_INFO_ID.notEqual(update.getEventInfoId())
-                                    .or(getTable().SIGNATURE.notEqual(update.getSignature()))
-                                    .or(getTable().DONATION_PLEDGE.notEqual(update.getDonationPledge()))
-                                    .or(getTable().PARTICIPANT_ID.notEqual(update.getParticipantId()))
-                    )
-                    .execute();
-            if (updatedRecords > 0) {
-                historyLogic.insertNew(actorId, new DataHistory(
-                        null,
-                        actorId,
-                        HistoryLogic.ActionType.UPDATED.name(),
-                        getTable().getName().toUpperCase(),
-                        convertToJson(update),
-                        convertToJson(originalRecord),
-                        null
-                ));
-            }
-            return updatedRecords;
+    public int updateExisting(long actorId, Registration update) throws RegistrationException, GuestLogic.GuestException {
+        if (update.getId() == null) {
+            throw new RegistrationException(
+                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    "ID %d to update was missing.".formatted(update.getId()));
         }
-        LOGGER.warn("Tried to update registration with a null id: {}", update);
-        return 0;
+        var originalRecord = fetchById(update.getId()).orElseThrow(
+                () -> new RegistrationException(
+                        new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                        "Record %d to update was not found.".formatted(update.getId())));
+        handleGuestUpdates(actorId, update.getId(), update.getParticipantId());
+        int updatedRecords = jooq
+                .update(getTable())
+                .set(getTable().EVENT_INFO_ID, update.getEventInfoId())
+                .set(getTable().SIGNATURE, update.getSignature())
+                .set(getTable().DONATION_PLEDGE, update.getDonationPledge())
+                .set(getTable().PARTICIPANT_ID, update.getParticipantId())
+                .where(getIdColumn().eq(update.getId()))
+                .and(
+                        getTable().EVENT_INFO_ID.notEqual(update.getEventInfoId())
+                                .or(getTable().SIGNATURE.notEqual(update.getSignature()))
+                                .or(getTable().DONATION_PLEDGE.notEqual(update.getDonationPledge()))
+                                .or(getTable().PARTICIPANT_ID.notEqual(update.getParticipantId()))
+                )
+                .execute();
+        if (updatedRecords > 0) {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    HistoryLogic.ActionType.UPDATED.name(),
+                    getTable().getName().toUpperCase(),
+                    convertToJson(update),
+                    convertToJson(originalRecord),
+                    null
+            ));
+        }
+        return updatedRecords;
     }
 
     @Override
-    public void delete(long actorId, long idToDelete) {
-        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RuntimeException("Registration not found: " + idToDelete));
+    public void delete(long actorId, long idToDelete) throws RegistrationException, GuestLogic.GuestException {
+        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RegistrationException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Registration to delete was not found."),
+                "Registration to delete with ID %d was not found.".formatted(idToDelete)));
         deleteCorrespondingGuests(actorId, idToDelete);
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
@@ -130,10 +128,15 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
         }
     }
 
-    private void handleGuestUpdates(long actorId, long registrationId, long newParticipantId) {
-        fetchGuestsForThisRegistration(registrationId).stream()
-                .filter(guest -> guest.getId() != null)
-                .forEach(guest -> updateRelevantGuestsForThisEvent(actorId, guest.getId(), newParticipantId));
+    @Override
+    public Map<String, String> validate(Registration pojo) {
+        return RegistrationValidator.of(pojo).getMessages();
+    }
+
+    private void handleGuestUpdates(long actorId, long registrationId, long newParticipantId) throws GuestLogic.GuestException {
+        for (GuestRecord guest : fetchGuestsForThisRegistration(registrationId)) {
+            updateRelevantGuestsForThisEvent(actorId, guest, newParticipantId);
+        }
     }
 
     private Result<GuestRecord> fetchGuestsForThisRegistration(long registrationId) {
@@ -143,14 +146,15 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
                 .fetch();
     }
 
-    private void updateRelevantGuestsForThisEvent(long actorId, long guestId, long newParticipantId) {
-        var existingGuest = guestLogic.fetchById(guestId).orElseThrow(() -> new RuntimeException("Guest not found: " + guestId));
+    private void updateRelevantGuestsForThisEvent(long actorId, GuestRecord existingGuest, long newParticipantId) throws GuestLogic.GuestException {
         var updatedGuest = new Guest(existingGuest.getId(), newParticipantId, existingGuest.getRegistrationId(), existingGuest.getRawGuestName(), existingGuest.getGuestProfileId(), existingGuest.getRelationship(), existingGuest.getTimeRecorded());
         guestLogic.updateExisting(actorId, updatedGuest);
     }
 
-    private void deleteCorrespondingGuests(long actorId, long registrationIdToDelete) {
-        jooq.select(GUEST.ID).from(GUEST).where(GUEST.REGISTRATION_ID.eq(registrationIdToDelete)).fetchInto(Long.class).forEach(guestIdToDelete -> guestLogic.delete(actorId, guestIdToDelete));
+    private void deleteCorrespondingGuests(long actorId, long registrationIdToDelete) throws GuestLogic.GuestException {
+        for (Long guestIdToDelete : jooq.select(GUEST.ID).from(GUEST).where(GUEST.REGISTRATION_ID.eq(registrationIdToDelete)).fetchInto(Long.class)) {
+            guestLogic.delete(actorId, guestIdToDelete);
+        }
     }
 
     /**
@@ -160,6 +164,12 @@ public class RegistrationLogic<P extends Registration> extends Logic<Registratio
 
         public RegistrationWithLabelsLogic(ObjectMapper objectMapper, DSLContext jooq) {
             super(objectMapper, jooq, RegistrationWithLabels.class, REGISTRATION_WITH_LABELS, REGISTRATION_WITH_LABELS.ID);
+        }
+    }
+
+    public static class RegistrationException extends LogicException {
+        public RegistrationException(Map.Entry<String, String> publicMessage, String troubleshootingMessage) {
+            super(publicMessage, troubleshootingMessage);
         }
     }
 }

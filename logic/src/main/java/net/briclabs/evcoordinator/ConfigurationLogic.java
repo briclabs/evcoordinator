@@ -4,26 +4,28 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.generated.tables.pojos.Configuration;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.records.ConfigurationRecord;
+import net.briclabs.evcoordinator.validation.ConfigurationValidator;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
 import org.jooq.JSONB;
 
+import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Optional;
 
 import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.Tables.CONFIGURATION;
 
-public class ConfigurationLogic<P extends Configuration> extends Logic<ConfigurationRecord, Configuration, net.briclabs.evcoordinator.generated.tables.Configuration> implements WriteLogic<P> {
-    private final HistoryLogic<DataHistory> historyLogic;
+public class ConfigurationLogic extends WriteLogic<ConfigurationRecord, Configuration, net.briclabs.evcoordinator.generated.tables.Configuration> {
+    private final HistoryLogic historyLogic;
 
     public ConfigurationLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Configuration.class, CONFIGURATION, CONFIGURATION.ID);
-        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
+        this.historyLogic = new HistoryLogic(objectMapper, jooq);
     }
 
     @Override
-    public boolean isAlreadyRecorded(P pojo) {
+    public boolean isAlreadyRecorded(Configuration pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().CHARITY_NAME.getName(), pojo.getCharityName()),
                 entry(getTable().CHARITY_URL.getName(), pojo.getCharityUrl()),
@@ -49,7 +51,7 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
     }
 
     @Override
-    public Optional<Long> insertNew(long actorId, P pojo) {
+    public Optional<Long> insertNew(long actorId, Configuration pojo) {
         var insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().CHARITY_NAME, pojo.getCharityName())
@@ -77,8 +79,15 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
     }
 
     @Override
-    public int updateExisting(long actorId, P update) {
-        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Configuration not found: " + update.getId()));
+    public int updateExisting(long actorId, Configuration update) throws ConfigurationException {
+        if (update.getId() == null) {
+            throw new ConfigurationException(
+                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    "ID %d to update was missing.".formatted(update.getId()));
+        }
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new ConfigurationException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().CHARITY_NAME, update.getCharityName())
@@ -111,5 +120,16 @@ public class ConfigurationLogic<P extends Configuration> extends Logic<Configura
             ));
         }
         return updatedRecords;
+    }
+
+    @Override
+    public Map<String, String> validate(Configuration pojo) {
+        return ConfigurationValidator.of(pojo, this.getObjectMapper()).getMessages();
+    }
+
+    public static class ConfigurationException extends LogicException {
+        public ConfigurationException(Map.Entry<String, String> publicMessage, String troubleshootingMessage) {
+            super(publicMessage, troubleshootingMessage);
+        }
     }
 }

@@ -6,10 +6,12 @@ import net.briclabs.evcoordinator.generated.tables.pojos.Guest;
 import net.briclabs.evcoordinator.generated.tables.pojos.GuestWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.GuestRecord;
 import net.briclabs.evcoordinator.generated.tables.records.GuestWithLabelsRecord;
+import net.briclabs.evcoordinator.validation.GuestValidator;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
 import org.jooq.impl.DSL;
 
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,23 +20,16 @@ import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.Guest.GUEST;
 import static net.briclabs.evcoordinator.generated.tables.GuestWithLabels.GUEST_WITH_LABELS;
 
-public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.briclabs.evcoordinator.generated.tables.Guest> implements WriteLogic<P>, DeletableRecord {
-    private final HistoryLogic<DataHistory> historyLogic;
-
-    private final GuestLogic.GuestWithLabelsLogic guestWithLabelsLogic;
+public class GuestLogic extends WriteAndDeleteLogic<GuestRecord, Guest, net.briclabs.evcoordinator.generated.tables.Guest> {
+    private final HistoryLogic historyLogic;
 
     public GuestLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Guest.class, GUEST, GUEST.ID);
-        this.guestWithLabelsLogic = new GuestLogic.GuestWithLabelsLogic(objectMapper, jooq);
-        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
-    }
-
-    public GuestLogic.GuestWithLabelsLogic getGuestWithLabelsLogic() {
-        return guestWithLabelsLogic;
+        this.historyLogic = new HistoryLogic(objectMapper, jooq);
     }
 
     @Override
-    public boolean isAlreadyRecorded(P pojo) {
+    public boolean isAlreadyRecorded(Guest pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().REGISTRATION_ID.getName(), Long.toString(pojo.getRegistrationId())),
                 entry(getTable().INVITEE_PROFILE_ID.getName(), Long.toString(pojo.getInviteeProfileId())),
@@ -45,7 +40,7 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
     }
 
     @Override
-    public Optional<Long> insertNew(long actorId, P pojo) {
+    public Optional<Long> insertNew(long actorId, Guest pojo) {
         Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().REGISTRATION_ID, pojo.getRegistrationId())
@@ -71,8 +66,15 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
     }
 
     @Override
-    public int updateExisting(long actorId, P update) {
-        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Guest not found: " + update.getId()));
+    public int updateExisting(long actorId, Guest update) throws GuestException {
+        if (update.getId() == null) {
+            throw new GuestException(
+                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    "ID %d to update was missing.".formatted(update.getId()));
+        }
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new GuestException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().REGISTRATION_ID, update.getRegistrationId())
@@ -103,8 +105,10 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
     }
 
     @Override
-    public void delete(long actorId, long idToDelete) {
-        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RuntimeException("Guest not found: " + idToDelete));
+    public void delete(long actorId, long idToDelete) throws GuestException {
+        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new GuestException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "The guest to be deleted was not found."),
+                String.format("The guest with ID %d to be deleted was not found.", idToDelete)));
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
             historyLogic.insertNew(actorId, new DataHistory(
@@ -117,6 +121,11 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
                     null
             ));
         }
+    }
+
+    @Override
+    public Map<String, String> validate(Guest pojo) {
+        return GuestValidator.of(pojo).getMessages();
     }
 
     /**
@@ -135,6 +144,12 @@ public class GuestLogic<P extends Guest> extends Logic<GuestRecord, Guest, net.b
     public static class GuestWithLabelsLogic extends Logic<GuestWithLabelsRecord, GuestWithLabels, net.briclabs.evcoordinator.generated.tables.GuestWithLabels> {
         public GuestWithLabelsLogic(ObjectMapper objectMapper, DSLContext jooq) {
             super(objectMapper, jooq, GuestWithLabels.class, GUEST_WITH_LABELS, GUEST_WITH_LABELS.ID);
+        }
+    }
+
+    public static class GuestException extends LogicException {
+        public GuestException(Map.Entry<String, String> publicMessage, String troubleshootingMessage) {
+            super(publicMessage, troubleshootingMessage);
         }
     }
 }

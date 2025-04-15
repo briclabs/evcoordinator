@@ -4,12 +4,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.generated.tables.records.ParticipantRecord;
+import net.briclabs.evcoordinator.validation.ParticipantValidator;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
 import org.jooq.impl.DSL;
 import org.jooq.tools.StringUtils;
 
 import java.time.format.DateTimeFormatter;
+import java.util.AbstractMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -21,17 +23,15 @@ import static net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPAN
  * for handling {@code Participant} entities. This class extends the generic
  * {@code Logic} class to implement operations specific to Participant records
  * in the database and adheres to the {@code WriteLogic} interface.
- *
- * @param <P> The Participant type parameter extending the {@code Participant} class.
- *
+ **
  * @implNote The Participant object in the data model cannot be deleted because of the impact this would have to the History table.
  */
-public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRecord, Participant, net.briclabs.evcoordinator.generated.tables.Participant> implements WriteLogic<P> {
-    private final HistoryLogic<DataHistory> historyLogic;
+public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant, net.briclabs.evcoordinator.generated.tables.Participant> {
+    private final HistoryLogic historyLogic;
 
     public ParticipantLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, Participant.class, PARTICIPANT, PARTICIPANT.ID);
-        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
+        this.historyLogic = new HistoryLogic(objectMapper, jooq);
     }
 
     /**
@@ -73,23 +73,8 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
                 1);
     }
 
-    /**
-     * Checks if the email address / participant type combo is already recorded in the database.
-     *
-     * @param emailAddressToSearchFor The email address to check for existence.
-     * @param participantTypeToSearchFor The participant type to check for existence.
-     * @return true if the email address / participant type combo is already recorded, false otherwise.
-     */
-    public boolean isEmailAddressAlreadyRecorded(String emailAddressToSearchFor, String participantTypeToSearchFor) {
-        Map<String, String> criteria = Map.ofEntries(
-                entry(getTable().ADDR_EMAIL.getName(), emailAddressToSearchFor),
-                entry(getTable().PARTICIPANT_TYPE.getName(), participantTypeToSearchFor)
-        );
-        return fetchByCriteria(true, criteria, getIdColumn().getName(), false, 0, 1).count() > 0;
-    }
-
     @Override
-    public boolean isAlreadyRecorded(P pojo) {
+    public boolean isAlreadyRecorded(Participant pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().PARTICIPANT_TYPE.getName(), pojo.getParticipantType()),
                 entry(getTable().SPONSOR.getName(), pojo.getParticipantType()),
@@ -111,7 +96,7 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
     }
 
     @Override
-    public Optional<Long> insertNew(long actorId, P pojo) {
+    public Optional<Long> insertNew(long actorId, Participant pojo) {
         Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().PARTICIPANT_TYPE, pojo.getParticipantType())
@@ -148,8 +133,15 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
     }
 
     @Override
-    public int updateExisting(long actorId, P update) {
-        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Participant not found: " + update.getId()));
+    public int updateExisting(long actorId, Participant update) throws ParticipantException {
+        if (update.getId() == null) {
+            throw new ParticipantException(
+                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    "ID %d to update was missing.".formatted(update.getId()));
+        }
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new ParticipantException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq.update(getTable())
                 .set(getTable().PARTICIPANT_TYPE, update.getParticipantType())
                 .set(getTable().SPONSOR, update.getSponsor())
@@ -198,5 +190,16 @@ public class ParticipantLogic<P extends Participant> extends Logic<ParticipantRe
             ));
         }
         return updatedRecords;
+    }
+
+    @Override
+    public Map<String, String> validate(Participant pojo) {
+        return ParticipantValidator.of(pojo).getMessages();
+    }
+
+    public static class ParticipantException extends LogicException {
+        public ParticipantException(Map.Entry<String, String> publicMessage, String troubleshootingMessage) {
+            super(publicMessage, troubleshootingMessage);
+        }
     }
 }

@@ -4,17 +4,20 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.ListWithCount;
 import net.briclabs.evcoordinator.RegistrationLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
-import net.briclabs.evcoordinator.controller.DeleteEndpoint;
-import net.briclabs.evcoordinator.controller.ReadController;
-import net.briclabs.evcoordinator.controller.WriteController;
+import net.briclabs.evcoordinator.controller.WriteWithDeleteController;
 import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
 import net.briclabs.evcoordinator.generated.tables.pojos.RegistrationWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationRecord;
+import net.briclabs.evcoordinator.generated.tables.records.RegistrationWithLabelsRecord;
+import net.briclabs.evcoordinator.model.CreateResponse;
+import net.briclabs.evcoordinator.model.DeleteResponse;
 import net.briclabs.evcoordinator.model.SearchRequest;
+import net.briclabs.evcoordinator.model.UpdateResponse;
 import org.jooq.DSLContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -28,7 +31,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.HttpClientErrorException;
 
 
 @RestController
@@ -40,60 +42,56 @@ import org.springframework.web.client.HttpClientErrorException;
 @EnableMethodSecurity
 @Validated
 @RequestMapping(ApiController.V1 + "/registration")
-public class RegistrationController<P extends Registration> extends ApiController<
+public class RegistrationController extends WriteWithDeleteController<
+        RegistrationWithLabelsRecord,
+        RegistrationWithLabels,
+        net.briclabs.evcoordinator.generated.tables.RegistrationWithLabels,
+        RegistrationLogic.RegistrationWithLabelsLogic,
         RegistrationRecord,
         Registration,
         net.briclabs.evcoordinator.generated.tables.Registration,
-        RegistrationLogic<P>
-    > implements WriteController<P>, ReadController<RegistrationWithLabels>, DeleteEndpoint {
+        RegistrationLogic> {
 
     @Autowired
     public RegistrationController(ObjectMapper objectMapper, DSLContext dslContext) {
-        super(objectMapper, dslContext, new RegistrationLogic<>(objectMapper, dslContext));
+        super(objectMapper, dslContext, new RegistrationLogic.RegistrationWithLabelsLogic(objectMapper, dslContext), new RegistrationLogic(objectMapper, dslContext));
     }
 
     @Override
-    @GetMapping(value = "/{id}")
-    public ResponseEntity<RegistrationWithLabels> findById(@PathVariable("id") Long id) {
-        return logic.getRegistrationWithLabelsLogic().fetchById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    @Override
-    @PostMapping(path = "/search")
-    public ResponseEntity<ListWithCount<RegistrationWithLabels>> search(@RequestBody SearchRequest searchRequest) {
-        ListWithCount<RegistrationWithLabels> rawMatchingRegistrations = logic.getRegistrationWithLabelsLogic().fetchByCriteria(
-                searchRequest.searchConfiguration().exactMatch(),
-                searchRequest.searchCriteria(),
-                searchRequest.searchConfiguration().sortColumn(),
-                searchRequest.searchConfiguration().sortAsc(),
-                searchRequest.searchConfiguration().offset(),
-                searchRequest.searchConfiguration().max()
-        );
-        return ResponseEntity.ok(rawMatchingRegistrations);
+    @DeleteMapping(value = "/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasAuthority('evcoordinator:admin')")
+    public ResponseEntity<DeleteResponse> delete(@PathVariable("id") Long id) {
+        return super.delete(id);
     }
 
     @Override
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<Long> create(@RequestBody P registration) throws HttpClientErrorException {
-        return logic.isAlreadyRecorded(registration)
-                ? ResponseEntity.status(HttpStatus.FORBIDDEN).build()
-                : logic.insertNew(getActorId(), registration).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.internalServerError().build());
+    @PreAuthorize("hasAuthority('evcoordinator:admin')")
+    public ResponseEntity<CreateResponse> create(@RequestBody Registration pojo) {
+        return super.create(pojo);
     }
 
     @Override
     @PutMapping
     @ResponseStatus(HttpStatus.OK)
-    public ResponseEntity<Integer> update(@RequestBody P updatedRegistration) {
-        int countOfRecordsUpdated = logic.updateExisting(getActorId(), updatedRegistration);
-        return countOfRecordsUpdated > 0 ? ResponseEntity.ok(countOfRecordsUpdated) : ResponseEntity.internalServerError().build();
+    @PreAuthorize("hasAuthority('evcoordinator:admin')")
+    public ResponseEntity<UpdateResponse> update(@RequestBody Registration pojo) {
+        return super.update(pojo);
     }
 
     @Override
-    @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
-    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
-        logic.delete(getActorId(), id);
-        return ResponseEntity.noContent().build();
+    @GetMapping(value = "/{id}")
+    @PreAuthorize("hasAuthority('evcoordinator:admin')")
+    public ResponseEntity<RegistrationWithLabels> fetchById(@PathVariable("id") Long id) {
+        return super.fetchById(id);
+    }
+
+    @Override
+    @PostMapping(path = "/search")
+    @PreAuthorize("hasAuthority('evcoordinator:admin')")
+    public ResponseEntity<ListWithCount<RegistrationWithLabels>> search(@RequestBody SearchRequest searchRequest) {
+        return super.search(searchRequest);
     }
 }

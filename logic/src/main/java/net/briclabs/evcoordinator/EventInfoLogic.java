@@ -3,14 +3,13 @@ package net.briclabs.evcoordinator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
-import net.briclabs.evcoordinator.generated.tables.pojos.Guest;
-import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
-import net.briclabs.evcoordinator.generated.tables.pojos.Transaction_;
 import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
+import net.briclabs.evcoordinator.validation.EventInfoValidator;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
 
 import java.time.format.DateTimeFormatter;
+import java.util.AbstractMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -19,22 +18,31 @@ import static java.util.Map.entry;
 import static net.briclabs.evcoordinator.generated.tables.EventInfo.EVENT_INFO;
 import static net.briclabs.evcoordinator.generated.tables.Registration.REGISTRATION;
 
-public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, EventInfo, net.briclabs.evcoordinator.generated.tables.EventInfo> implements WriteLogic<P>, DeletableRecord {
-    private final HistoryLogic<DataHistory> historyLogic;
-    private final TransactionLogic<Transaction_> transactionLogic;
-    private final GuestLogic<Guest> guestLogic;
-    private final RegistrationLogic<Registration> registrationLogic;
+public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventInfo, net.briclabs.evcoordinator.generated.tables.EventInfo> {
+    private final HistoryLogic historyLogic;
+    private final TransactionLogic transactionLogic;
+    private final GuestLogic guestLogic;
+    private final RegistrationLogic registrationLogic;
+
+    /**
+     * Represents the possible statuses of an event.
+     */
+    public enum EVENT_STATUS {
+        CURRENT,
+        PAST,
+        CANCELLED
+    }
 
     public EventInfoLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, EventInfo.class, EVENT_INFO, EVENT_INFO.ID);
-        this.historyLogic = new HistoryLogic<>(objectMapper, jooq);
-        this.transactionLogic = new TransactionLogic<>(objectMapper, jooq);
-        this.guestLogic = new GuestLogic<>(objectMapper, jooq);
-        this.registrationLogic = new RegistrationLogic<>(objectMapper, jooq);
+        this.historyLogic = new HistoryLogic(objectMapper, jooq);
+        this.transactionLogic = new TransactionLogic(objectMapper, jooq);
+        this.guestLogic = new GuestLogic(objectMapper, jooq);
+        this.registrationLogic = new RegistrationLogic(objectMapper, jooq);
     }
 
     @Override
-    public boolean isAlreadyRecorded(P pojo) {
+    public boolean isAlreadyRecorded(EventInfo pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().EVENT_STATUS.getName(), pojo.getEventStatus()),
                 entry(getTable().EVENT_NAME.getName(), pojo.getEventName()),
@@ -59,7 +67,7 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
     }
 
     @Override
-    public Optional<Long> insertNew(long actorId, P pojo) {
+    public Optional<Long> insertNew(long actorId, EventInfo pojo) {
         Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().EVENT_STATUS, pojo.getEventStatus())
@@ -85,8 +93,15 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
     }
 
     @Override
-    public int updateExisting(long actorId, P update) {
-        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new RuntimeException("Event Info not found: " + update.getId()));
+    public int updateExisting(long actorId, EventInfo update) throws EventInfoException {
+        if (update.getId() == null) {
+            throw new EventInfoException(
+                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    "ID %d to update was missing.".formatted(update.getId()));
+        }
+        var originalRecord = fetchById(update.getId()).orElseThrow(() -> new EventInfoException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().EVENT_STATUS, update.getEventStatus())
@@ -117,8 +132,10 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
     }
 
     @Override
-    public void delete(long actorId, long idToDelete) {
-        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RuntimeException("Event Info not found: " + idToDelete));
+    public void delete(long actorId, long idToDelete) throws EventInfoException, TransactionLogic.TransactionException, RegistrationLogic.RegistrationException, GuestLogic.GuestException {
+        var originalRecord = fetchById(idToDelete).orElseThrow(() -> new EventInfoException(
+                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "The event to be deleted was not found."),
+                "The event with ID %d to be deleted was not found.".formatted(idToDelete)));
         deleteCorrespondingTransactions(actorId, idToDelete);
         deleteCorrespondingRegistrationsAndGuests(actorId, idToDelete);
 
@@ -136,17 +153,34 @@ public class EventInfoLogic<P extends EventInfo> extends Logic<EventInfoRecord, 
         }
     }
 
-    private void deleteCorrespondingRegistrationsAndGuests(long actorId, long idToDelete) {
+    @Override
+    public Map<String, String> validate(EventInfo pojo) {
+        return EventInfoValidator.of(pojo).getMessages();
+    }
+
+    private void deleteCorrespondingRegistrationsAndGuests(long actorId, long idToDelete) throws RegistrationLogic.RegistrationException, GuestLogic.GuestException {
         var registrationIdsToDelete = jooq.select(REGISTRATION.ID).from(REGISTRATION).where(REGISTRATION.EVENT_INFO_ID.eq(idToDelete)).fetchInto(Long.class);
         deleteCorrespondingGuests(actorId, registrationIdsToDelete);
-        registrationIdsToDelete.forEach(registrationIdToDelete -> registrationLogic.delete(actorId, registrationIdToDelete));
+        for (Long registrationIdToDelete : registrationIdsToDelete) {
+            registrationLogic.delete(actorId, registrationIdToDelete);
+        }
     }
 
-    private void deleteCorrespondingGuests(long actorId, List<Long> registrationIdsToDelete) {
-        guestLogic.getGuestIdsByRegistrationIds(registrationIdsToDelete).forEach(guestIdToDelete -> guestLogic.delete(actorId, guestIdToDelete));
+    private void deleteCorrespondingGuests(long actorId, List<Long> registrationIdsToDelete) throws GuestLogic.GuestException {
+        for (Long guestIdToDelete : guestLogic.getGuestIdsByRegistrationIds(registrationIdsToDelete)) {
+            guestLogic.delete(actorId, guestIdToDelete);
+        }
     }
 
-    private void deleteCorrespondingTransactions(long actorId, long eventId) {
-        transactionLogic.getTransactionIdsByEventId(eventId).forEach(transactionIdToDelete -> transactionLogic.delete(actorId, transactionIdToDelete));
+    private void deleteCorrespondingTransactions(long actorId, long eventId) throws TransactionLogic.TransactionException {
+        for (Long transactionIdToDelete : transactionLogic.getTransactionIdsByEventId(eventId)) {
+            transactionLogic.delete(actorId, transactionIdToDelete);
+        }
+    }
+
+    public static class EventInfoException extends LogicException {
+        public EventInfoException(Map.Entry<String, String> publicMessage, String troubleshootingMessage) {
+            super(publicMessage, troubleshootingMessage);
+        }
     }
 }
