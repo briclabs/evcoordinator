@@ -16,16 +16,16 @@ public class RegistrationValidator extends AbstractValidator<RegistrationRecord,
     }
 
     void validate() {
-        if (pojo().getParticipantId() < 0L) {
+        if (pojo().getParticipantId() == null || pojo().getParticipantId() < 0L) {
             addMessage(table().PARTICIPANT_ID, MUST_BE_POSITIVE_NUMBER);
         }
-        if (pojo().getDonationPledge().compareTo(BigDecimal.ZERO) < 0) {
+        if (pojo().getDonationPledge() == null || pojo().getDonationPledge().compareTo(BigDecimal.ZERO) < 0) {
             addMessage(table().DONATION_PLEDGE, MUST_BE_POSITIVE_NUMBER);
         }
         if (pojo().getSignature().isBlank()) {
             addMessage(table().SIGNATURE, MUST_NOT_BE_BLANK);
         }
-        if (pojo().getEventInfoId() < 0L) {
+        if (pojo().getEventInfoId() == null || pojo().getEventInfoId() < 0L) {
             addMessage(table().EVENT_INFO_ID, MUST_BE_POSITIVE_NUMBER);
         }
     }

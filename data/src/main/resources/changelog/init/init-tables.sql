@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS participant (
    addr_street_2 character varying,
    addr_city character varying NOT NULL,
    addr_state_abbr character varying NOT NULL,
-   addr_zip int NOT NULL,
+   addr_zip character varying NOT NULL,
    addr_email character varying NOT NULL,
    phone_digits bigint NOT NULL,
    emergency_contact_relationship_type text REFERENCES emergency_contact_relationship_type(emergency_contact_relationship_type) NOT NULL,
@@ -89,7 +89,6 @@ CREATE TABLE IF NOT EXISTS registration (
 
 CREATE TABLE IF NOT EXISTS guest (
     id bigint GENERATED ALWAYS AS IDENTITY,
-    invitee_profile_id bigint REFERENCES participant(id) NOT NULL,
     registration_id bigint REFERENCES registration(id) NOT NULL,
     raw_guest_name text NOT NULL,
     guest_profile_id bigint REFERENCES participant(id),
@@ -134,7 +133,6 @@ CREATE OR REPLACE VIEW guest_with_labels AS
         g.guest_profile_id,
         gp.name_first AS guest_name_first,
         gp.name_last AS guest_name_last,
-        g.invitee_profile_id AS invitee_profile_id,
         i.name_first AS invitee_first_name,
         i.name_last AS invitee_last_name,
         g.relationship,
@@ -146,7 +144,7 @@ CREATE OR REPLACE VIEW guest_with_labels AS
             JOIN
         event_info e ON r.event_info_id = e.id
             JOIN
-        participant i ON g.invitee_profile_id = i.id
+        participant i ON r.participant_id = i.id
             LEFT JOIN
         participant gp ON g.guest_profile_id = gp.id;
 
@@ -178,7 +176,7 @@ FROM
         JOIN
     event_info e ON r.event_info_id = e.id
         LEFT JOIN
-    guest g ON p.id = g.invitee_profile_id
+    guest g ON p.id = g.guest_profile_id
 group by r.id,
          r.participant_id,
          r.donation_pledge,

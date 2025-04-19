@@ -16,15 +16,17 @@ import java.util.Map;
  */
 public abstract class AbstractValidator<R extends TableRecordImpl<R>, P extends Serializable, T extends TableImpl<R>> implements Validator {
 
+    public static final String MUST_BE_VALID_VALUE = "Must be a valid value.";
     public static final String MUST_NOT_BE_BLANK = "Must not be blank.";
+    public static final String MUST_BE_EMPTY_OR_NOT_BE_BLANK = "Must be empty or not be blank.";
     public static final String MUST_BE_POSITIVE_NUMBER = "Must be a positive number.";
     public static final String MUST_BE_VALID_URL = "Must be a valid URL.";
     public static final String MUST_BE_VALID_JSON = "Must be a valid JSON object.";
     public static final String MUST_BE_BEFORE_END = "Must be before end date.";
-    public static final String MUST_BE_FUTURE = "Must be in the future.";
+    public static final String MUST_BE_NOW_OR_FUTURE = "Must be in the present or future.";
     public static final String MUST_BE_PAST = "Must be in the past.";
     public static final String MUST_BE_VALID_STATE_ABBR = "Must be a valid US state abbreviation.";
-    public static final String MUST_BE_VALID_ZIP = "Must be a valid 5-digit number.";
+    public static final String MUST_BE_VALID_ZIP = "Must be a valid zip code.";
     public static final String MUST_BE_VALID_EMAIL = "Must be a valid email address.";
     public static final String MUST_BE_VALID_PHONE = "Must be a valid 10-digit number.";
 

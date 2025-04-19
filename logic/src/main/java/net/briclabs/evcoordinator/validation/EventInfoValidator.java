@@ -8,6 +8,8 @@ import java.time.LocalDate;
 
 public class EventInfoValidator extends AbstractValidator<EventInfoRecord, EventInfo, net.briclabs.evcoordinator.generated.tables.EventInfo> {
 
+    private static final LocalDate NOW_DATE = LocalDate.now();
+
     private EventInfoValidator(EventInfo eventInfo) {
         super(net.briclabs.evcoordinator.generated.tables.EventInfo.EVENT_INFO, eventInfo);
     }
@@ -23,17 +25,34 @@ public class EventInfoValidator extends AbstractValidator<EventInfoRecord, Event
         if (pojo().getEventTitle().isBlank()) {
             addMessage(table().EVENT_TITLE, MUST_NOT_BE_BLANK);
         }
-        if (pojo().getDateStart().isAfter(pojo().getDateEnd())) {
+
+        if (pojo().getDateStart() == null) {
+            addMessage(table().DATE_START, MUST_NOT_BE_BLANK);
+        }
+        if (pojo().getDateEnd() == null) {
+            addMessage(table().DATE_END, MUST_NOT_BE_BLANK);
+        }
+        if (pojo().getDateStart() != null && pojo().getDateEnd() != null && pojo().getDateStart().isAfter(pojo().getDateEnd())) {
             addMessage(table().DATE_START, MUST_BE_BEFORE_END);
         }
-        if (pojo().getEventStatus().isBlank()) {
+
+        var eventStatus = EventInfoLogic.EVENT_STATUS.fromString(pojo().getEventStatus());
+        if (eventStatus.isEmpty()) {
             addMessage(table().EVENT_STATUS, MUST_NOT_BE_BLANK);
+            return;
         }
-        var eventStatus = pojo().getEventStatus();
-        if (eventStatus.equalsIgnoreCase(EventInfoLogic.EVENT_STATUS.CURRENT.toString()) && pojo().getDateEnd().isAfter(LocalDate.now())) {
-            addMessage(table().DATE_END, MUST_BE_FUTURE);
-        } else if (eventStatus.equalsIgnoreCase(EventInfoLogic.EVENT_STATUS.PAST.toString()) && pojo().getDateEnd().isBefore(LocalDate.now())) {
-            addMessage(table().DATE_END, MUST_BE_PAST);
+
+        switch (eventStatus.get()) {
+            case CURRENT -> {
+                if (!pojo().getDateEnd().isEqual(NOW_DATE) && !pojo().getDateEnd().isAfter(NOW_DATE)) {
+                    addMessage(table().DATE_END, MUST_BE_NOW_OR_FUTURE);
+                }
+            }
+            case PAST -> {
+                if (!pojo().getDateEnd().isBefore(NOW_DATE)) {
+                    addMessage(table().DATE_END, MUST_BE_PAST);
+                }
+            }
         }
     }
 }

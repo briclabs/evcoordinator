@@ -77,7 +77,7 @@ public class RegistrationPacketLogic extends Logic<RegistrationPacketWithLabelRe
 
     private Long processRegistration(long actorId, Registration registration, Guest[] guests, long presentParticipantId) throws RegistrationPacketException {
         var registrationId = insertRegistration(actorId, registration, presentParticipantId);
-        insertGuests(actorId, guests, presentParticipantId, registrationId);
+        insertGuests(actorId, guests, registrationId);
 
         return registrationId;
     }
@@ -102,13 +102,12 @@ public class RegistrationPacketLogic extends Logic<RegistrationPacketWithLabelRe
      *
      * @param actorId               The ID of the actor performing the operation.
      * @param guests                An array of {@code Guest} objects representing the guests to be inserted.
-     * @param participantId         The ID of the participant inviting the guests.
      * @param registrationId        The ID of the registration under which the guests are being added.
      * @throws RegistrationPacketException if a guest insertion fails during the process.
      */
-    private void insertGuests(long actorId, Guest[] guests, long participantId, Long registrationId) throws RegistrationPacketException {
+    private void insertGuests(long actorId, Guest[] guests, Long registrationId) throws RegistrationPacketException {
         for (var guest : guests) {
-            var guestToCreate = new Guest(null, participantId, registrationId, guest.getRawGuestName(), null, guest.getRelationship(), null);
+            var guestToCreate = new Guest(null, registrationId, guest.getRawGuestName(), null, guest.getRelationship(), null);
             if (!guestLogic.isAlreadyRecorded(guestToCreate) && guestLogic.insertNew(actorId, guestToCreate).isEmpty()) {
                 throw new RegistrationPacketException(
                         new AbstractMap.SimpleImmutableEntry<>(PACKET_SECTION.GUESTS.toString(), "Failed to insert a guest."),

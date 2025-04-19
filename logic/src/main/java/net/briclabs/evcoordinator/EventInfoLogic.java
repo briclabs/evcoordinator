@@ -30,7 +30,23 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
     public enum EVENT_STATUS {
         CURRENT,
         PAST,
-        CANCELLED
+        CANCELLED;
+
+        /**
+         * Converts a string representation of an event status to the corresponding {@code EVENT_STATUS} enum value.
+         * The comparison is case-insensitive. If the input string does not match any known status, {@code null} is returned.
+         *
+         * @param status the string representation of the event status to convert.
+         * @return the corresponding {@code EVENT_STATUS} enum value, or {@code null} if the input string does not match any status.
+         */
+        public static Optional<EVENT_STATUS> fromString(String status) {
+            for (EVENT_STATUS eventStatus : values()) {
+                if (eventStatus.name().equalsIgnoreCase(status)) {
+                    return Optional.of(eventStatus);
+                }
+            }
+            return Optional.empty();
+        }
     }
 
     public EventInfoLogic(ObjectMapper objectMapper, DSLContext jooq) {

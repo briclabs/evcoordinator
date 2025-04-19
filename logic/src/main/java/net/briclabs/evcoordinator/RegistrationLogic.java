@@ -2,16 +2,13 @@ package net.briclabs.evcoordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
-import net.briclabs.evcoordinator.generated.tables.pojos.Guest;
 import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
 import net.briclabs.evcoordinator.generated.tables.pojos.RegistrationWithLabels;
-import net.briclabs.evcoordinator.generated.tables.records.GuestRecord;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationRecord;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationWithLabelsRecord;
 import net.briclabs.evcoordinator.validation.RegistrationValidator;
 import org.jooq.DSLContext;
 import org.jooq.JSON;
-import org.jooq.Result;
 
 import java.util.AbstractMap;
 import java.util.Map;
@@ -79,7 +76,6 @@ public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, R
                 () -> new RegistrationException(
                         new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
                         "Record %d to update was not found.".formatted(update.getId())));
-        handleGuestUpdates(actorId, update.getId(), update.getParticipantId());
         int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().EVENT_INFO_ID, update.getEventInfoId())
@@ -131,24 +127,6 @@ public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, R
     @Override
     public Map<String, String> validate(Registration pojo) {
         return RegistrationValidator.of(pojo).getMessages();
-    }
-
-    private void handleGuestUpdates(long actorId, long registrationId, long newParticipantId) throws GuestLogic.GuestException {
-        for (GuestRecord guest : fetchGuestsForThisRegistration(registrationId)) {
-            updateRelevantGuestsForThisEvent(actorId, guest, newParticipantId);
-        }
-    }
-
-    private Result<GuestRecord> fetchGuestsForThisRegistration(long registrationId) {
-        return jooq
-                .selectFrom(GUEST)
-                .where(GUEST.REGISTRATION_ID.eq(registrationId))
-                .fetch();
-    }
-
-    private void updateRelevantGuestsForThisEvent(long actorId, GuestRecord existingGuest, long newParticipantId) throws GuestLogic.GuestException {
-        var updatedGuest = new Guest(existingGuest.getId(), newParticipantId, existingGuest.getRegistrationId(), existingGuest.getRawGuestName(), existingGuest.getGuestProfileId(), existingGuest.getRelationship(), existingGuest.getTimeRecorded());
-        guestLogic.updateExisting(actorId, updatedGuest);
     }
 
     private void deleteCorrespondingGuests(long actorId, long registrationIdToDelete) throws GuestLogic.GuestException {

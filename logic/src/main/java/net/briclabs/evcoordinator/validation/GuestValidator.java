@@ -14,21 +14,18 @@ public class GuestValidator extends AbstractValidator<GuestRecord, Guest, net.br
     }
 
     void validate() {
-        if (pojo().getInviteeProfileId() < 0L) {
-            addMessage(table().INVITEE_PROFILE_ID, MUST_BE_POSITIVE_NUMBER);
-        }
-        if (pojo().getRegistrationId() < 0L) {
-            addMessage(table().REGISTRATION_ID, MUST_BE_POSITIVE_NUMBER);
+        if (pojo().getRegistrationId() == null || pojo().getRegistrationId() < 0L) {
+            addMessage(table().REGISTRATION_ID, MUST_BE_VALID_VALUE);
         }
         if (pojo().getRawGuestName().isBlank()) {
             addMessage(table().RAW_GUEST_NAME, MUST_NOT_BE_BLANK);
         }
         Long guestProfileId = pojo().getGuestProfileId();
         if (guestProfileId != null && guestProfileId < 0) {
-            addMessage(table().GUEST_PROFILE_ID, MUST_BE_POSITIVE_NUMBER);
+            addMessage(table().GUEST_PROFILE_ID, MUST_BE_VALID_VALUE);
         }
         if (pojo().getRelationship().isBlank()) {
-            addMessage(table().RELATIONSHIP, MUST_NOT_BE_BLANK);
+            addMessage(table().RELATIONSHIP, MUST_BE_VALID_VALUE);
         }
     }
 }

@@ -32,7 +32,6 @@ public class GuestLogic extends WriteAndDeleteLogic<GuestRecord, Guest, net.bric
     public boolean isAlreadyRecorded(Guest pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().REGISTRATION_ID.getName(), Long.toString(pojo.getRegistrationId())),
-                entry(getTable().INVITEE_PROFILE_ID.getName(), Long.toString(pojo.getInviteeProfileId())),
                 entry(getTable().GUEST_PROFILE_ID.getName(), Optional.ofNullable(pojo.getGuestProfileId()).map(value -> Long.toString(value)).orElse("")),
                 entry(getTable().RAW_GUEST_NAME.getName(), pojo.getRawGuestName()),
                 entry(getTable().RELATIONSHIP.getName(), pojo.getRelationship()));
@@ -44,7 +43,6 @@ public class GuestLogic extends WriteAndDeleteLogic<GuestRecord, Guest, net.bric
         Optional<Long> insertedId = jooq
                 .insertInto(getTable())
                 .set(getTable().REGISTRATION_ID, pojo.getRegistrationId())
-                .set(getTable().INVITEE_PROFILE_ID, pojo.getInviteeProfileId())
                 .set(getTable().GUEST_PROFILE_ID, pojo.getGuestProfileId())
                 .set(getTable().RAW_GUEST_NAME, pojo.getRawGuestName())
                 .set(getTable().RELATIONSHIP, pojo.getRelationship())
@@ -78,14 +76,12 @@ public class GuestLogic extends WriteAndDeleteLogic<GuestRecord, Guest, net.bric
         int updatedRecords = jooq
                 .update(getTable())
                 .set(getTable().REGISTRATION_ID, update.getRegistrationId())
-                .set(getTable().INVITEE_PROFILE_ID, update.getInviteeProfileId())
                 .set(getTable().GUEST_PROFILE_ID, update.getGuestProfileId())
                 .set(getTable().RAW_GUEST_NAME, update.getRawGuestName())
                 .set(getTable().RELATIONSHIP, update.getRelationship())
                 .where(getIdColumn().eq(update.getId()))
                 .and(
                         getTable().REGISTRATION_ID.notEqual(update.getRegistrationId())
-                                .or(getTable().INVITEE_PROFILE_ID.notEqual(update.getInviteeProfileId()))
                                 .or(DSL.coalesce(getTable().GUEST_PROFILE_ID, 0).notEqual(update.getGuestProfileId()))
                                 .or(getTable().RAW_GUEST_NAME.notEqual(update.getRawGuestName()))
                                 .or(getTable().RELATIONSHIP.notEqual(update.getRelationship()))
