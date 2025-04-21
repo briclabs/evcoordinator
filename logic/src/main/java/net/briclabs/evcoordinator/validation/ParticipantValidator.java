@@ -16,6 +16,7 @@ public class ParticipantValidator extends AbstractValidator<ParticipantRecord, P
         return new ParticipantValidator(participant);
     }
 
+    @Override
     void validate() {
         if (pojo().getParticipantType().isBlank()) {
             addMessage(table().PARTICIPANT_TYPE, MUST_BE_VALID_VALUE);

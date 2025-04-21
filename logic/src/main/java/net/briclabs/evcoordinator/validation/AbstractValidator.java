@@ -38,7 +38,6 @@ public abstract class AbstractValidator<R extends TableRecordImpl<R>, P extends 
     public AbstractValidator(T table, P pojo) {
         this.table = table;
         this.pojo = pojo;
-        validate();
     }
 
     /**
@@ -63,11 +62,16 @@ public abstract class AbstractValidator<R extends TableRecordImpl<R>, P extends 
      * @param message the validation message describing the issue with the specified field
      */
     public void addMessage(TableField<R, ?> field, String message) {
-        this.messages.put(field.getName(), message);
+        if (this.messages.containsKey(field.getName())) {
+            this.messages.compute(field.getName(), (key, existingValue) -> existingValue + " " + message);
+        } else {
+            this.messages.put(field.getName(), message);
+        }
     }
 
     @Override
     public Map<String, String> getMessages() {
+        validate();
         return Map.copyOf(messages);
     }
 

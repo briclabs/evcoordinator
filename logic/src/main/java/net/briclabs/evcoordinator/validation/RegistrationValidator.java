@@ -15,6 +15,7 @@ public class RegistrationValidator extends AbstractValidator<RegistrationRecord,
         return new RegistrationValidator(registration);
     }
 
+    @Override
     void validate() {
         if (pojo().getParticipantId() == null || pojo().getParticipantId() < 0L) {
             addMessage(table().PARTICIPANT_ID, MUST_BE_POSITIVE_NUMBER);

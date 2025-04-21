@@ -19,6 +19,7 @@ public class JacksonConfig {
         SimpleModule module = new SimpleModule();
         module.addSerializer(JSON.class, new JsonSerializer());
         module.addSerializer(JSONB.class, new JsonbSerializer());
+        module.addDeserializer(JSON.class, new JsonObjectDeserializer());
         objectMapper.registerModule(module);
 
         objectMapper.registerModule(new JavaTimeModule());

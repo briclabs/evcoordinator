@@ -13,6 +13,7 @@ public class GuestValidator extends AbstractValidator<GuestRecord, Guest, net.br
         return new GuestValidator(guest);
     }
 
+    @Override
     void validate() {
         if (pojo().getRegistrationId() == null || pojo().getRegistrationId() < 0L) {
             addMessage(table().REGISTRATION_ID, MUST_BE_VALID_VALUE);

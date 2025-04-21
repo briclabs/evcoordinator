@@ -18,6 +18,7 @@ public class EventInfoValidator extends AbstractValidator<EventInfoRecord, Event
         return new EventInfoValidator(eventInfo);
     }
 
+    @Override
     void validate() {
         if (pojo().getEventName().isBlank()) {
             addMessage(table().EVENT_NAME, MUST_NOT_BE_BLANK);
