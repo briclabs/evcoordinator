@@ -1,11 +1,14 @@
 package net.briclabs.evcoordinator.controller.registration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.briclabs.evcoordinator.Logic;
 import net.briclabs.evcoordinator.RegistrationPacketLogic;
 import net.briclabs.evcoordinator.controller.ApiController;
 import net.briclabs.evcoordinator.model.CreateResponse;
 import net.briclabs.evcoordinator.model.RegistrationPacket;
 import org.jooq.DSLContext;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Collections;
 import java.util.Map;
 
 
@@ -34,6 +38,7 @@ import java.util.Map;
 public class  RegistrationPacketController extends ApiController {
 
     protected final RegistrationPacketLogic writeLogic;
+    private static final Logger LOGGER = LoggerFactory.getLogger(RegistrationPacketController.class);
 
     @Autowired
     public RegistrationPacketController(ObjectMapper objectMapper, DSLContext dslContext) {
@@ -53,13 +58,16 @@ public class  RegistrationPacketController extends ApiController {
     public ResponseEntity<CreateResponse> register(@RequestBody RegistrationPacket registration) {
         var errors = writeLogic.validate(registration);
         if (!errors.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CreateResponse(null, errors));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CreateResponse(-1L, errors));
         }
 
         try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(new CreateResponse(writeLogic.register(getActorId(), registration), null));
+            return ResponseEntity.status(HttpStatus.CREATED).body(new CreateResponse(writeLogic.register(getActorId(), registration), Collections.emptyMap()));
         } catch (RegistrationPacketLogic.RegistrationPacketException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new CreateResponse(null, Map.ofEntries(e.getPublicMessage())));
+            LOGGER.error("Failed to process registration packet.", e);
+            return ResponseEntity.internalServerError().body(new CreateResponse(-1L, Map.ofEntries(e.getPublicMessage())));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(new CreateResponse(-1L, Map.of("%s|%s".formatted(Logic.GENERAL_MESSAGE_KEY, Logic.GENERAL_MESSAGE_KEY), "An internal server error occurred. Please try again. If the problem persists, please contact the administrator.")));
         }
     }
 }

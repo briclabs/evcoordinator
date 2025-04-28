@@ -24,6 +24,8 @@ import java.util.stream.Collectors;
 public abstract class Logic<R extends TableRecordImpl<R>, P extends Serializable, T extends TableImpl<R>> {
     private static final Logger LOGGER = LoggerFactory.getLogger(Logic.class);
 
+    public static final String GENERAL_MESSAGE_KEY = "GENERAL_MESSAGE";
+
     private final ObjectMapper objectMapper;
     final DSLContext jooq;
     private final Class<P> recordType;

@@ -69,12 +69,12 @@ public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, R
     public int updateExisting(long actorId, Registration update) throws RegistrationException, GuestLogic.GuestException {
         if (update.getId() == null) {
             throw new RegistrationException(
-                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "ID to update was missing. Please review your input and try again."),
                     "ID %d to update was missing.".formatted(update.getId()));
         }
         var originalRecord = fetchById(update.getId()).orElseThrow(
                 () -> new RegistrationException(
-                        new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                        new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "Record to update was not found. Please review your input and try again."),
                         "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())
@@ -107,8 +107,8 @@ public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, R
     @Override
     public void delete(long actorId, long idToDelete) throws RegistrationException, GuestLogic.GuestException {
         var originalRecord = fetchById(idToDelete).orElseThrow(() -> new RegistrationException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Registration to delete was not found."),
-                "Registration to delete with ID %d was not found.".formatted(idToDelete)));
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "Registration to delete was not found. Please review your input and try again."),
+                "Registration with ID %d was not found.".formatted(idToDelete)));
         deleteCorrespondingGuests(actorId, idToDelete);
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
@@ -126,7 +126,7 @@ public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, R
 
     @Override
     public Map<String, String> validate(Registration pojo) {
-        return RegistrationValidator.of(pojo).getMessages();
+        return RegistrationValidator.of(pojo, false).getMessages();
     }
 
     private void deleteCorrespondingGuests(long actorId, long registrationIdToDelete) throws GuestLogic.GuestException {

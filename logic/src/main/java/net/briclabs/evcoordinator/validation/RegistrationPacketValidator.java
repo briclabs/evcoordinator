@@ -1,5 +1,6 @@
 package net.briclabs.evcoordinator.validation;
 
+import net.briclabs.evcoordinator.ParticipantLogic;
 import net.briclabs.evcoordinator.RegistrationPacketLogic;
 import net.briclabs.evcoordinator.model.RegistrationPacket;
 
@@ -9,16 +10,18 @@ import java.util.Map;
 public class RegistrationPacketValidator implements Validator {
 
     private final RegistrationPacket pojo;
+    private final ParticipantLogic participantLogic;
 
     private final Map<String, String> messages = new HashMap<>();
 
-    private RegistrationPacketValidator(RegistrationPacket pojo) {
+    private RegistrationPacketValidator(RegistrationPacket pojo, ParticipantLogic participantLogic) {
         this.pojo = pojo;
+        this.participantLogic = participantLogic;
         validate();
     }
 
-    public static RegistrationPacketValidator of(RegistrationPacket registrationPacket) {
-        return new RegistrationPacketValidator(registrationPacket);
+    public static RegistrationPacketValidator of(RegistrationPacket registrationPacket, ParticipantLogic participantLogic) {
+        return new RegistrationPacketValidator(registrationPacket, participantLogic);
     }
 
     void validate() {
@@ -26,11 +29,22 @@ public class RegistrationPacketValidator implements Validator {
             this.addMessageOverallIncomplete();
             return;
         }
-        this.addMessage(RegistrationPacketLogic.PACKET_SECTION.PARTICIPANT, ParticipantValidator.of(pojo.participant()).getMessages());
-        for (var guest : pojo.guests()) {
-            this.addMessage(RegistrationPacketLogic.PACKET_SECTION.GUESTS, GuestValidator.of(guest).getMessages());
+        if (!participantLogic.attendeePreexists(pojo.participant().getNameFirst(), pojo.participant().getNameLast(), pojo.participant().getAddrEmail())) {
+            this.addMessage(RegistrationPacketLogic.PACKET_SECTION.PARTICIPANT, ParticipantValidator.of(pojo.participant(), true).getMessages());
         }
-        this.addMessage(RegistrationPacketLogic.PACKET_SECTION.REGISTRATION, RegistrationValidator.of(pojo.registration()).getMessages());
+        addIndexedGuestsMessages();
+        this.addMessage(RegistrationPacketLogic.PACKET_SECTION.REGISTRATION, RegistrationValidator.of(pojo.registration(), true).getMessages());
+    }
+
+    private void addIndexedGuestsMessages() {
+        var guests = pojo.guests();
+        for (int i = 0; i < guests.length; i++) {
+            Map<String, String> updatedGuestMessages = new HashMap<>();
+            for (var entry : GuestValidator.of(guests[i], true).getMessages().entrySet()) {
+                updatedGuestMessages.put(i + "|" + entry.getKey(), entry.getValue());
+            }
+            this.addMessage(RegistrationPacketLogic.PACKET_SECTION.GUESTS, updatedGuestMessages);
+        }
     }
 
     private void addMessageOverallIncomplete() {
@@ -38,7 +52,7 @@ public class RegistrationPacketValidator implements Validator {
     }
 
     private void addMessage(RegistrationPacketLogic.PACKET_SECTION packetSection, Map<String, String> messages) {
-        messages.forEach((key, value) -> this.messages.put(packetSection.toString() + "." + key, value));
+        messages.forEach((key, value) -> this.messages.put(packetSection.toString() + "|" + key, value));
     }
 
     @Override

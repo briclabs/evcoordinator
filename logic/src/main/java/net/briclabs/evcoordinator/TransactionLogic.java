@@ -75,11 +75,11 @@ public class TransactionLogic extends WriteAndDeleteLogic<Transaction_Record, Tr
     public int updateExisting(long actorId, Transaction_ update) throws TransactionException {
         if (update.getId() == null) {
             throw new TransactionException(
-                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "ID to update was missing. Please review your input and try again."),
                     "ID %d to update was missing.".formatted(update.getId()));
         }
         var originalRecord = fetchById(update.getId()).orElseThrow(() -> new TransactionException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "Record to update was not found. Please review your input and try again."),
                 "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())
@@ -117,8 +117,8 @@ public class TransactionLogic extends WriteAndDeleteLogic<Transaction_Record, Tr
     @Override
     public void delete(long actorId, long idToDelete) throws TransactionException {
         var originalRecord = fetchById(idToDelete).orElseThrow(() -> new TransactionException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Transaction to delete was not found."),
-                "Transaction to delete with ID %d was not found.".formatted(idToDelete)));
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "Transaction to delete was not found. Please review your input and try again."),
+                "Transaction with ID %d to be deleted was not found.".formatted(idToDelete)));
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
             historyLogic.insertNew(actorId, new DataHistory(

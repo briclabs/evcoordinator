@@ -67,11 +67,11 @@ public class GuestLogic extends WriteAndDeleteLogic<GuestRecord, Guest, net.bric
     public int updateExisting(long actorId, Guest update) throws GuestException {
         if (update.getId() == null) {
             throw new GuestException(
-                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "ID to update was missing. Please review your input and try again."),
                     "ID %d to update was missing.".formatted(update.getId()));
         }
         var originalRecord = fetchById(update.getId()).orElseThrow(() -> new GuestException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "Record to update was not found. Please review your input and try again."),
                 "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())
@@ -103,8 +103,8 @@ public class GuestLogic extends WriteAndDeleteLogic<GuestRecord, Guest, net.bric
     @Override
     public void delete(long actorId, long idToDelete) throws GuestException {
         var originalRecord = fetchById(idToDelete).orElseThrow(() -> new GuestException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "The guest to be deleted was not found."),
-                String.format("The guest with ID %d to be deleted was not found.", idToDelete)));
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "The guest to be deleted was not found. Please review your input and try again."),
+                String.format("Guest with ID %d to be deleted was not found.", idToDelete)));
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
             historyLogic.insertNew(actorId, new DataHistory(
@@ -121,7 +121,7 @@ public class GuestLogic extends WriteAndDeleteLogic<GuestRecord, Guest, net.bric
 
     @Override
     public Map<String, String> validate(Guest pojo) {
-        return GuestValidator.of(pojo).getMessages();
+        return GuestValidator.of(pojo, false).getMessages();
     }
 
     /**

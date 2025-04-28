@@ -89,11 +89,7 @@ public class ParticipantController extends WriteController<
 
     @PostMapping("/preexists")
     public ResponseEntity<Void> preexists(@RequestBody Participant participant) {
-        var preexistingParticipant = readLogic.fetchAttendeeByNameAndEmail(participant.getNameFirst(), participant.getNameLast(), participant.getAddrEmail());
-
-        LOGGER.info("preexistingParticipant: {}", preexistingParticipant);
-
-        if (preexistingParticipant.count() > 0) {
+        if (readLogic.attendeePreexists(participant.getNameFirst(), participant.getNameLast(), participant.getAddrEmail())) {
             return ResponseEntity.ok().build();
         } else {
             return ResponseEntity.notFound().build();

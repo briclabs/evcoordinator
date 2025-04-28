@@ -26,13 +26,13 @@ public abstract class ApiController {
     /**
      * Retrieves the ID of the authenticated participant.
      * If no authenticated participant is found or the ID is null,
-     * the method returns 0.
+     * the method returns -1.
      *
-     * @return the ID of the authenticated participant if present; otherwise, 0.
+     * @return the ID of the authenticated participant if present; otherwise, -1.
      */
     protected long getActorId() {
         var participant = getAuthenticatedParticipant();
-        return participant.isEmpty() || participant.get().getId() == null ? 0 : participant.get().getId();
+        return participant.isEmpty() || participant.get().getId() == null ? -1L : participant.get().getId();
     }
 
     /**

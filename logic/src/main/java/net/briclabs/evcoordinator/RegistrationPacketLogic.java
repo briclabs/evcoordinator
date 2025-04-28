@@ -53,14 +53,14 @@ public class RegistrationPacketLogic extends Logic<RegistrationPacketWithLabelRe
      * @return A {@code Long} containing the ID of the newly created event.
      * @throws RegistrationPacketException in the event there's a problem handling processing of a part of the Registration Packet.
      */
-    public Long register(long actorId, RegistrationPacket registrationRequest) throws RegistrationPacketException{
+    public Long register(long actorId, RegistrationPacket registrationRequest) throws RegistrationPacketException {
         var participantId = fetchOrInsertParticipatingAttendee(actorId, registrationRequest);
         return processRegistration(actorId, registrationRequest.registration(), registrationRequest.guests(), participantId);
     }
 
     @Override
     public Map<String, String> validate(RegistrationPacket pojo) {
-        return RegistrationPacketValidator.of(pojo).getMessages();
+        return RegistrationPacketValidator.of(pojo, participantLogic).getMessages();
     }
 
     private Long fetchOrInsertParticipatingAttendee(long actorId, RegistrationPacket registrationRequest) throws RegistrationPacketException {
@@ -70,9 +70,8 @@ public class RegistrationPacketLogic extends Logic<RegistrationPacketWithLabelRe
         }
         return participantLogic.insertNew(actorId, registrationRequest.participant()).orElseThrow(
                 () -> new RegistrationPacketException(
-                        new AbstractMap.SimpleImmutableEntry<>(PACKET_SECTION.PARTICIPANT.toString(),
-                                "Failed to insert participant."), "Failed to insert participant %s.".formatted(
-                        registrationRequest.participant().getNameFirst() + " " + registrationRequest.participant().getNameLast() + " (" + registrationRequest.participant().getAddrEmail() + ")")));
+                        new AbstractMap.SimpleImmutableEntry<>("%s|%s".formatted(GENERAL_MESSAGE_KEY, PACKET_SECTION.PARTICIPANT.toString()), "Failed to record your information. Please review your input and try again."),
+                        "Failed to insert participant %s.".formatted(registrationRequest.participant().getNameFirst() + " " + registrationRequest.participant().getNameLast() + " (" + registrationRequest.participant().getAddrEmail() + ")")));
     }
 
     private Long processRegistration(long actorId, Registration registration, Guest[] guests, long presentParticipantId) throws RegistrationPacketException {
@@ -86,13 +85,13 @@ public class RegistrationPacketLogic extends Logic<RegistrationPacketWithLabelRe
         var registrationToCreate = new Registration(null, participantId, registration.getDonationPledge(), registration.getSignature(), registration.getEventInfoId(), null);
         if (registrationLogic.isAlreadyRecorded(registrationToCreate)) {
             throw new RegistrationPacketException(
-                    new AbstractMap.SimpleImmutableEntry<>(PACKET_SECTION.REGISTRATION.toString(), "Registration already exists."),
-                    "Registration for participant ID %d and event info %d already exists.".formatted(participantId, registrationToCreate.getEventInfoId()));
+                    new AbstractMap.SimpleImmutableEntry<>("%s|%s".formatted(GENERAL_MESSAGE_KEY, PACKET_SECTION.REGISTRATION.toString()), "Your registration has already been recorded. If you have changes to make, please contact the administrator."),
+                    "Registration for Participant ID %d and Event Info ID %d already exists.".formatted(participantId, registrationToCreate.getEventInfoId()));
         } else {
             return registrationLogic.insertNew(actorId, registrationToCreate).orElseThrow(
                     () -> new RegistrationPacketException(
-                            new AbstractMap.SimpleImmutableEntry<>(PACKET_SECTION.REGISTRATION.toString(), "Failed to insert a registration."),
-                            "Failed to insert event info %d registration for participant ID %d.".formatted(registration.getEventInfoId(), participantId)));
+                            new AbstractMap.SimpleImmutableEntry<>("%s|%s".formatted(GENERAL_MESSAGE_KEY, PACKET_SECTION.REGISTRATION.toString()), "Failed to record your registration. Please review your input and try again."),
+                            "Failed to insert Event Info ID %d registration for Participant ID %d.".formatted(registration.getEventInfoId(), participantId)));
         }
     }
 
@@ -110,8 +109,8 @@ public class RegistrationPacketLogic extends Logic<RegistrationPacketWithLabelRe
             var guestToCreate = new Guest(null, registrationId, guest.getRawGuestName(), null, guest.getRelationship(), null);
             if (!guestLogic.isAlreadyRecorded(guestToCreate) && guestLogic.insertNew(actorId, guestToCreate).isEmpty()) {
                 throw new RegistrationPacketException(
-                        new AbstractMap.SimpleImmutableEntry<>(PACKET_SECTION.GUESTS.toString(), "Failed to insert a guest."),
-                        "Failed to insert guest %s for registration ID %d.".formatted(guest.getRawGuestName(), registrationId));
+                        new AbstractMap.SimpleImmutableEntry<>("%s|%s".formatted(GENERAL_MESSAGE_KEY, PACKET_SECTION.GUESTS.toString()), "Failed to record a guest. Please review your input and try again."),
+                        "Failed to insert guest %s for Registration ID %d.".formatted(guest.getRawGuestName(), registrationId));
             }
         }
     }

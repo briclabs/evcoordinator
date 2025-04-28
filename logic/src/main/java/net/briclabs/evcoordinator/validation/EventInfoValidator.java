@@ -28,10 +28,10 @@ public class EventInfoValidator extends AbstractValidator<EventInfoRecord, Event
         }
 
         if (pojo().getDateStart() == null) {
-            addMessage(table().DATE_START, MUST_NOT_BE_BLANK);
+            addMessage(table().DATE_START, MUST_BE_VALID_VALUE);
         }
         if (pojo().getDateEnd() == null) {
-            addMessage(table().DATE_END, MUST_NOT_BE_BLANK);
+            addMessage(table().DATE_END, MUST_BE_VALID_VALUE);
         }
         if (pojo().getDateStart() != null && pojo().getDateEnd() != null && pojo().getDateStart().isAfter(pojo().getDateEnd())) {
             addMessage(table().DATE_START, MUST_BE_BEFORE_END);
@@ -39,20 +39,22 @@ public class EventInfoValidator extends AbstractValidator<EventInfoRecord, Event
 
         var eventStatus = EventInfoLogic.EVENT_STATUS.fromString(pojo().getEventStatus());
         if (eventStatus.isEmpty()) {
-            addMessage(table().EVENT_STATUS, MUST_NOT_BE_BLANK);
+            addMessage(table().EVENT_STATUS, MUST_BE_VALID_VALUE);
             return;
         }
 
         switch (eventStatus.get()) {
             case CURRENT -> {
-                if (!pojo().getDateEnd().isEqual(NOW_DATE) && !pojo().getDateEnd().isAfter(NOW_DATE)) {
-                    addMessage(table().DATE_END, MUST_BE_NOW_OR_FUTURE);
+                if (pojo().getDateEnd().isEqual(NOW_DATE) || pojo().getDateEnd().isAfter(NOW_DATE)) {
+                    return;
                 }
+                addMessage(table().DATE_END, MUST_BE_NOW_OR_FUTURE);
             }
             case PAST -> {
-                if (!pojo().getDateEnd().isBefore(NOW_DATE)) {
-                    addMessage(table().DATE_END, MUST_BE_PAST);
+                if (pojo().getDateEnd().isBefore(NOW_DATE)) {
+                    return;
                 }
+                addMessage(table().DATE_END, MUST_BE_PAST);
             }
         }
     }

@@ -8,12 +8,15 @@ import net.briclabs.evcoordinator.model.UpdateResponse;
 import org.jooq.DSLContext;
 import org.jooq.impl.TableImpl;
 import org.jooq.impl.TableRecordImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.io.Serializable;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 
 public abstract class WriteController<
         RR extends TableRecordImpl<RR>,
@@ -27,6 +30,7 @@ public abstract class WriteController<
     extends ReadController<RR, RP, RT, RL> {
 
     protected final WL writeLogic;
+    private static final Logger LOGGER = LoggerFactory.getLogger(WriteController.class);
 
     public WriteController(ObjectMapper objectMapper, DSLContext dslContext, RL readLogic, WL writeLogic) {
         super(objectMapper, dslContext, readLogic);
@@ -41,14 +45,22 @@ public abstract class WriteController<
     protected ResponseEntity<CreateResponse> create(WP pojo) {
         var errors = writeLogic.validate(pojo);
         if (!errors.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CreateResponse(null, errors));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new CreateResponse(-1L, errors));
         }
         if (writeLogic.isAlreadyRecorded(pojo)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new CreateResponse(null, Map.of("create", "This record already exists.")));
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new CreateResponse(-1L, Map.of(Logic.GENERAL_MESSAGE_KEY, "This record already exists.")));
         }
-        return writeLogic.insertNew(getActorId(), pojo)
-                .map(insertedId -> ResponseEntity.status(HttpStatus.OK).body(new CreateResponse(insertedId, Collections.emptyMap())))
-                .orElseGet(() -> ResponseEntity.internalServerError().body(new CreateResponse(null, Map.of("create", "Failed to create record."))));
+        Optional<Long> insertedId;
+        try {
+            insertedId = writeLogic.insertNew(getActorId(), pojo);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(new CreateResponse(-1L, Map.of(Logic.GENERAL_MESSAGE_KEY, "An internal server error occurred. Please try again. If the problem persists, please contact the administrator.")));
+        }
+        if (insertedId.isPresent()) {
+            return ResponseEntity.status(HttpStatus.CREATED).body(new CreateResponse(insertedId.get(), Collections.emptyMap()));
+        }
+        LOGGER.error("Failed to create record.", new Exception());
+        return ResponseEntity.internalServerError().body(new CreateResponse(-1L, Map.of(Logic.GENERAL_MESSAGE_KEY, "Failed to create record. Please review your input and try again.")));
     }
 
     /**
@@ -59,13 +71,20 @@ public abstract class WriteController<
     protected ResponseEntity<UpdateResponse> update(WP pojo) {
         var errors = writeLogic.validate(pojo);
         if (!errors.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new UpdateResponse(null, errors));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(new UpdateResponse(0, errors));
         }
+        int countOfRecordsUpdated;
         try {
-            var countOfRecordsUpdated = writeLogic.updateExisting(getActorId(), pojo);
-            return ResponseEntity.ok(new UpdateResponse(countOfRecordsUpdated, countOfRecordsUpdated > 0 ? Collections.emptyMap() : Map.of("update", "No records were updated.")));
+            countOfRecordsUpdated = writeLogic.updateExisting(getActorId(), pojo);
         } catch (WriteLogic.LogicException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new UpdateResponse(null, Map.ofEntries(e.getPublicMessage())));
+            LOGGER.error("Failed to update record.", e);
+            return ResponseEntity.internalServerError().body(new UpdateResponse(0, Map.ofEntries(e.getPublicMessage())));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(new UpdateResponse(0, Map.of(Logic.GENERAL_MESSAGE_KEY, "An internal server error occurred. Please try again. If the problem persists, please contact the administrator.")));
         }
+        if (countOfRecordsUpdated == 0) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new UpdateResponse(0, Map.of(Logic.GENERAL_MESSAGE_KEY, "No records were updated. Please review your input and try again.")));
+        }
+        return ResponseEntity.ok(new UpdateResponse(countOfRecordsUpdated, Collections.emptyMap()));
     }
 }

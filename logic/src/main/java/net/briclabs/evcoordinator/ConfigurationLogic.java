@@ -82,11 +82,11 @@ public class ConfigurationLogic extends WriteLogic<ConfigurationRecord, Configur
     public int updateExisting(long actorId, Configuration update) throws ConfigurationException {
         if (update.getId() == null) {
             throw new ConfigurationException(
-                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "ID to update was missing. Please review your input and try again."),
                     "ID %d to update was missing.".formatted(update.getId()));
         }
         var originalRecord = fetchById(update.getId()).orElseThrow(() -> new ConfigurationException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "Record to update was not found. Please review your input and try again."),
                 "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())

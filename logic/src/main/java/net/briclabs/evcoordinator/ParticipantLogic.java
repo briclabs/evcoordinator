@@ -58,6 +58,23 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
     }
 
     /**
+     * Determines whether an attendee already exists based on their first name, last name, and email address.
+     * The method ensures that all input fields are non-blank and consults the underlying data source
+     * to check for matching records.
+     *
+     * @param nameFirst The first name of the attendee to check.
+     * @param nameLast The last name of the attendee to check.
+     * @param addrEmail The email address of the attendee to check.
+     * @return true if an attendee with the provided details exists, false otherwise.
+     */
+    public boolean attendeePreexists(String nameFirst, String nameLast, String addrEmail) {
+        if (nameFirst.isBlank() || nameLast.isBlank() || addrEmail.isBlank()) {
+            return false;
+        }
+        return fetchAttendeeByNameAndEmail(nameFirst, nameLast, addrEmail).count() > 0;
+    }
+
+    /**
      * Fetches preexisting participants based on their email address.
      *
      * @param addrEmail The email address of the attendee to search for.
@@ -136,11 +153,11 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
     public int updateExisting(long actorId, Participant update) throws ParticipantException {
         if (update.getId() == null) {
             throw new ParticipantException(
-                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "ID to update was missing. Please review your input and try again."),
                     "ID %d to update was missing.".formatted(update.getId()));
         }
         var originalRecord = fetchById(update.getId()).orElseThrow(() -> new ParticipantException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "Record to update was not found. Please review your input and try again."),
                 "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq.update(getTable())
                 .set(getTable().PARTICIPANT_TYPE, update.getParticipantType())
@@ -194,7 +211,7 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
 
     @Override
     public Map<String, String> validate(Participant pojo) {
-        return ParticipantValidator.of(pojo).getMessages();
+        return ParticipantValidator.of(pojo, false).getMessages();
     }
 
     public static class ParticipantException extends LogicException {

@@ -8,18 +8,23 @@ import java.time.LocalDate;
 
 public class ParticipantValidator extends AbstractValidator<ParticipantRecord, Participant, net.briclabs.evcoordinator.generated.tables.Participant> {
 
-    private ParticipantValidator(Participant participant) {
+    private boolean isRegistrationPacketSection;
+
+    private ParticipantValidator(Participant participant, boolean isRegistrationPacketSection) {
         super(net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT, participant);
+        this.isRegistrationPacketSection = isRegistrationPacketSection;
     }
 
-    public static ParticipantValidator of(Participant participant) {
-        return new ParticipantValidator(participant);
+    public static ParticipantValidator of(Participant participant, boolean isRegistrationPacketSection) {
+        return new ParticipantValidator(participant, isRegistrationPacketSection);
     }
 
     @Override
     void validate() {
-        if (pojo().getParticipantType().isBlank()) {
-            addMessage(table().PARTICIPANT_TYPE, MUST_BE_VALID_VALUE);
+        if (!isRegistrationPacketSection) {
+            if (pojo().getParticipantType().isBlank()) {
+                addMessage(table().PARTICIPANT_TYPE, MUST_BE_VALID_VALUE);
+            }
         }
         if (pojo().getNameFirst().isBlank()) {
             addMessage(table().NAME_FIRST, MUST_NOT_BE_BLANK);
@@ -45,10 +50,10 @@ public class ParticipantValidator extends AbstractValidator<ParticipantRecord, P
         if (pojo().getAddrCity().isBlank()) {
             addMessage(table().ADDR_CITY, MUST_NOT_BE_BLANK);
         }
-        if (pojo().getAddrStateAbbr().isBlank() || pojo().getAddrStateAbbr().length() > 2) {
+        if (pojo().getAddrStateAbbr().isBlank() || pojo().getAddrStateAbbr().trim().length() != 2) {
             addMessage(table().ADDR_STATE_ABBR, MUST_BE_VALID_STATE_ABBR);
         }
-        if (pojo().getAddrZip().length() < 5 || pojo().getAddrZip().replace("-", "").length() > 9) {
+        if (!(pojo().getAddrZip().trim().length() == 5 || pojo().getAddrZip().trim().replace("-", "").length() == 9)) {
             addMessage(table().ADDR_ZIP, MUST_BE_VALID_ZIP);
         }
         if (!EmailValidator.getInstance().isValid(pojo().getAddrEmail())) {

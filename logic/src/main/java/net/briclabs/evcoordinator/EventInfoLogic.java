@@ -112,11 +112,11 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
     public int updateExisting(long actorId, EventInfo update) throws EventInfoException {
         if (update.getId() == null) {
             throw new EventInfoException(
-                    new AbstractMap.SimpleImmutableEntry<>(getIdColumn().getName(), "ID to update was missing."),
+                    new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "ID to update was missing. Please review your input and try again."),
                     "ID %d to update was missing.".formatted(update.getId()));
         }
         var originalRecord = fetchById(update.getId()).orElseThrow(() -> new EventInfoException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "Record to update was not found."),
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "Record to update was not found. Please review your input and try again."),
                 "Record %d to update was not found.".formatted(update.getId())));
         int updatedRecords = jooq
                 .update(getTable())
@@ -150,8 +150,8 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
     @Override
     public void delete(long actorId, long idToDelete) throws EventInfoException, TransactionLogic.TransactionException, RegistrationLogic.RegistrationException, GuestLogic.GuestException {
         var originalRecord = fetchById(idToDelete).orElseThrow(() -> new EventInfoException(
-                new AbstractMap.SimpleImmutableEntry<>(getTable().getName(), "The event to be deleted was not found."),
-                "The event with ID %d to be deleted was not found.".formatted(idToDelete)));
+                new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "The event to be deleted was not found. Please review your input and try again."),
+                "Event with ID %d to be deleted was not found.".formatted(idToDelete)));
         deleteCorrespondingTransactions(actorId, idToDelete);
         deleteCorrespondingRegistrationsAndGuests(actorId, idToDelete);
 
