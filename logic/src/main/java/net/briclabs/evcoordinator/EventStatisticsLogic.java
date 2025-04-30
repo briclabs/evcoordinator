@@ -1,6 +1,7 @@
 package net.briclabs.evcoordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.briclabs.evcoordinator.generated.enums.EventStatus;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventStatistics;
 import net.briclabs.evcoordinator.generated.tables.records.EventStatisticsRecord;
 import org.jooq.DSLContext;
@@ -25,7 +26,7 @@ public class EventStatisticsLogic  extends Logic<EventStatisticsRecord, EventSta
     public Optional<EventStatistics> fetchLatest() {
         return jooq
                 .selectFrom(getTable())
-                .where(getTable().EVENT_STATUS.eq("CURRENT"))
+                .where(getTable().EVENT_STATUS.eq(EventStatus.CURRENT))
                 .orderBy(getTable().DATE_START.desc(), getTable().DATE_END.desc())
                 .limit(1)
                 .fetchOptionalInto(getRecordType());

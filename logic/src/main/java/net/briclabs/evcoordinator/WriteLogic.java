@@ -1,16 +1,24 @@
 package net.briclabs.evcoordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.briclabs.evcoordinator.generated.enums.DataHistoryType;
+import net.briclabs.evcoordinator.generated.enums.TableRef;
+import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import org.jooq.DSLContext;
+import org.jooq.JSON;
 import org.jooq.TableField;
 import org.jooq.impl.TableImpl;
 import org.jooq.impl.TableRecordImpl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Optional;
 
 public abstract class WriteLogic<R extends TableRecordImpl<R>, P extends Serializable, T extends TableImpl<R>> extends Logic<R, P, T> implements Validatable<P> {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(WriteLogic.class);
 
     public WriteLogic(ObjectMapper objectMapper, DSLContext jooq, Class<P> recordType, T table, TableField<R, Long> idColumn
     ) {
@@ -41,6 +49,59 @@ public abstract class WriteLogic<R extends TableRecordImpl<R>, P extends Seriali
      * @throws LogicException if something goes wrong during the update.
      */
     abstract public int updateExisting(long actorId, P update) throws LogicException;
+
+    /**
+     * Records the history of an insert operation by logging the changes into the data history table.
+     *
+     * @param historyLogic the history logic instance to use to perform the history record insertion.
+     * @param actorId the ID of the actor performing the insert operation.
+     * @param insertedRecord the JSON representation of the newly inserted record.
+     */
+    void recordHistoryForInsert(HistoryLogic historyLogic, long actorId, JSON insertedRecord) {
+        var tableReference = TableRef.lookupLiteral(getTable().getName().toUpperCase());
+        if (tableReference == null) {
+            LOGGER.error("Unable to find table reference for table '{}'. Actor '{}' attempted to insert new record '{}'.",
+                    getTable().getName().toUpperCase(), actorId, insertedRecord
+            );
+        } else {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    DataHistoryType.INSERTED,
+                    tableReference,
+                    insertedRecord,
+                    JSON.json("{}"),
+                    null
+            ));
+        }
+    }
+
+    /**
+     * Records the history of an update operation by logging the changes into the data history table.
+     *
+     * @param historyLogic the history logic instance to use to perform the history record insertion.
+     * @param actorId the ID of the actor performing the update operation.
+     * @param originalRecord the JSON representation of the record before the update.
+     * @param update the JSON representation of the record after the update.
+     */
+    void recordHistoryForUpdate(HistoryLogic historyLogic, long actorId, JSON originalRecord, JSON update) {
+        var tableReference = TableRef.lookupLiteral(getTable().getName().toUpperCase());
+        if (tableReference == null) {
+            LOGGER.error("Unable to find table reference for table '{}'. Actor '{}' attempted to update a record from '{}' to '{}'.",
+                    getTable().getName().toUpperCase(), actorId, originalRecord, update
+            );
+        } else {
+            historyLogic.insertNew(actorId, new DataHistory(
+                    null,
+                    actorId,
+                    DataHistoryType.UPDATED,
+                    tableReference,
+                    update,
+                    originalRecord,
+                    null
+            ));
+        }
+    }
 
     /**
      * Represents an exception that occurs during the execution of logic operations.

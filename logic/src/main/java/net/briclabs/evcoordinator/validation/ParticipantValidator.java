@@ -8,7 +8,7 @@ import java.time.LocalDate;
 
 public class ParticipantValidator extends AbstractValidator<ParticipantRecord, Participant, net.briclabs.evcoordinator.generated.tables.Participant> {
 
-    private boolean isRegistrationPacketSection;
+    private final boolean isRegistrationPacketSection;
 
     private ParticipantValidator(Participant participant, boolean isRegistrationPacketSection) {
         super(net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT, participant);
@@ -22,7 +22,7 @@ public class ParticipantValidator extends AbstractValidator<ParticipantRecord, P
     @Override
     void validate() {
         if (!isRegistrationPacketSection) {
-            if (pojo().getParticipantType().isBlank()) {
+            if (pojo().getParticipantType() == null) {
                 addMessage(table().PARTICIPANT_TYPE, MUST_BE_VALID_VALUE);
             }
         }
@@ -62,7 +62,7 @@ public class ParticipantValidator extends AbstractValidator<ParticipantRecord, P
         if (pojo().getPhoneDigits() == null || pojo().getPhoneDigits() < 1000000000L || pojo().getPhoneDigits() > 9999999999L) {
             addMessage(table().PHONE_DIGITS, MUST_BE_VALID_PHONE);
         }
-        if (pojo().getEmergencyContactRelationshipType().isBlank()) {
+        if (pojo().getEmergencyContactRelationshipType() == null) {
             addMessage(table().EMERGENCY_CONTACT_RELATIONSHIP_TYPE, MUST_BE_VALID_VALUE);
         }
         if (pojo().getNameEmergency().isBlank()) {

@@ -1,12 +1,11 @@
 package net.briclabs.evcoordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
+import net.briclabs.evcoordinator.generated.enums.EventStatus;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
 import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
 import net.briclabs.evcoordinator.validation.EventInfoValidator;
 import org.jooq.DSLContext;
-import org.jooq.JSON;
 
 import java.time.format.DateTimeFormatter;
 import java.util.AbstractMap;
@@ -24,31 +23,6 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
     private final GuestLogic guestLogic;
     private final RegistrationLogic registrationLogic;
 
-    /**
-     * Represents the possible statuses of an event.
-     */
-    public enum EVENT_STATUS {
-        CURRENT,
-        PAST,
-        CANCELLED;
-
-        /**
-         * Converts a string representation of an event status to the corresponding {@code EVENT_STATUS} enum value.
-         * The comparison is case-insensitive. If the input string does not match any known status, {@code null} is returned.
-         *
-         * @param status the string representation of the event status to convert.
-         * @return the corresponding {@code EVENT_STATUS} enum value, or {@code null} if the input string does not match any status.
-         */
-        public static Optional<EVENT_STATUS> fromString(String status) {
-            for (EVENT_STATUS eventStatus : values()) {
-                if (eventStatus.name().equalsIgnoreCase(status)) {
-                    return Optional.of(eventStatus);
-                }
-            }
-            return Optional.empty();
-        }
-    }
-
     public EventInfoLogic(ObjectMapper objectMapper, DSLContext jooq) {
         super(objectMapper, jooq, EventInfo.class, EVENT_INFO, EVENT_INFO.ID);
         this.historyLogic = new HistoryLogic(objectMapper, jooq);
@@ -60,7 +34,7 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
     @Override
     public boolean isAlreadyRecorded(EventInfo pojo) {
         Map<String, String> criteria = Map.ofEntries(
-                entry(getTable().EVENT_STATUS.getName(), pojo.getEventStatus()),
+                entry(getTable().EVENT_STATUS.getName(), pojo.getEventStatus().getLiteral()),
                 entry(getTable().EVENT_NAME.getName(), pojo.getEventName()),
                 entry(getTable().EVENT_TITLE.getName(), pojo.getEventTitle()),
                 entry(getTable().DATE_START.getName(), pojo.getDateStart().format(DateTimeFormatter.ISO_DATE)),
@@ -76,7 +50,7 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
     public Optional<EventInfo> fetchLatest() {
         return jooq
                 .selectFrom(getTable())
-                .where(getTable().EVENT_STATUS.eq("CURRENT"))
+                .where(getTable().EVENT_STATUS.eq(EventStatus.CURRENT))
                 .orderBy(getIdColumn().desc())
                 .limit(1)
                 .fetchOptionalInto(getRecordType());
@@ -95,15 +69,7 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
                 .fetchOptional()
                 .map(EventInfoRecord::getId);
         if (insertedId.isPresent()) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.INSERTED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(pojo),
-                    JSON.json("{}"),
-                    null
-            ));
+            recordHistoryForInsert(historyLogic, actorId, convertToJson(pojo));
         }
         return insertedId;
     }
@@ -134,15 +100,7 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
                                 .or(getTable().DATE_END.notEqual(update.getDateEnd()))
                 ).execute();
         if (updatedRecords > 0) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(update),
-                    convertToJson(originalRecord),
-                    null
-            ));
+            recordHistoryForUpdate(historyLogic, actorId, convertToJson(originalRecord), convertToJson(update));
         }
         return updatedRecords;
     }
@@ -157,15 +115,7 @@ public class EventInfoLogic extends WriteAndDeleteLogic<EventInfoRecord, EventIn
 
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName().toUpperCase(),
-                    JSON.json("{}"),
-                    convertToJson(originalRecord),
-                    null
-            ));
+            recordHistoryForDeletion(historyLogic, actorId, convertToJson(originalRecord));
         }
     }
 

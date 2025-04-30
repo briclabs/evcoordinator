@@ -1,29 +1,14 @@
 -- liquibase formatted sql
 
 -- changeset liquibase:1
-CREATE TABLE IF NOT EXISTS table_ref ( table_ref text PRIMARY KEY );
-INSERT INTO table_ref (table_ref) VALUES ('CONFIGURATION'), ('PARTICIPANT'), ('EVENT_INFO'), ('REGISTRATION'), ('GUEST'), ('TRANSACTION_');
-
-CREATE TABLE IF NOT EXISTS data_history_type ( history_type text PRIMARY KEY );
-INSERT INTO data_history_type (history_type) VALUES ('INSERTED'), ('UPDATED'), ('DELETED');
-
-CREATE TABLE IF NOT EXISTS participant_type ( participant_type text PRIMARY KEY );
-INSERT INTO participant_type (participant_type) VALUES ('VENDOR'), ('VENUE'), ('ATTENDEE');
-
-CREATE TABLE IF NOT EXISTS guest_relationship_type ( guest_relationship_type text PRIMARY KEY );
-INSERT INTO guest_relationship_type (guest_relationship_type) VALUES ('ADULT'), ('CHILD'), ('PET');
-
-CREATE TABLE IF NOT EXISTS emergency_contact_relationship_type ( emergency_contact_relationship_type text PRIMARY KEY );
-INSERT INTO emergency_contact_relationship_type (emergency_contact_relationship_type) VALUES ('FRIEND'), ('FAMILY');
-
-CREATE TABLE IF NOT EXISTS event_status ( event_status_type text PRIMARY KEY );
-INSERT INTO event_status (event_status_type) VALUES ('CURRENT'), ('PAST'), ('CANCELLED');
-
-CREATE TABLE IF NOT EXISTS transaction_instrument ( transaction_instrument_type text PRIMARY KEY );
-INSERT INTO transaction_instrument (transaction_instrument_type) VALUES ('ELECTRONIC'), ('CHECK'), ('CASH');
-
-CREATE TABLE IF NOT EXISTS transaction_type ( transaction_type text PRIMARY KEY );
-INSERT INTO transaction_type (transaction_type) VALUES ('INVOICE'), ('EXPENSE'), ('INCOME');
+CREATE TYPE table_ref AS ENUM ('CONFIGURATION', 'PARTICIPANT', 'EVENT_INFO', 'REGISTRATION', 'GUEST', 'TRANSACTION_');
+CREATE TYPE data_history_type AS ENUM ('INSERTED', 'UPDATED', 'DELETED');
+CREATE TYPE participant_type AS ENUM ('VENDOR', 'VENUE', 'ATTENDEE');
+CREATE TYPE guest_relationship_type AS ENUM ('ADULT', 'CHILD', 'PET');
+CREATE TYPE emergency_contact_relationship_type AS ENUM ('FRIEND', 'FAMILY');
+CREATE TYPE event_status AS ENUM ('CURRENT', 'PAST', 'CANCELLED');
+CREATE TYPE transaction_instrument AS ENUM ('ELECTRONIC', 'CHECK', 'CASH');
+CREATE TYPE transaction_type AS ENUM ('INVOICE', 'EXPENSE', 'INCOME');
 
 CREATE TABLE IF NOT EXISTS configuration (
    id bigint GENERATED ALWAYS AS IDENTITY,
@@ -38,7 +23,7 @@ CREATE TABLE IF NOT EXISTS configuration (
 
 CREATE TABLE IF NOT EXISTS participant (
    id bigint GENERATED ALWAYS AS IDENTITY,
-   participant_type text REFERENCES participant_type(participant_type) NOT NULL,
+   participant_type participant_type NOT NULL,
    name_first character varying NOT NULL,
    name_last character varying NOT NULL,
    name_nick character varying,
@@ -51,7 +36,7 @@ CREATE TABLE IF NOT EXISTS participant (
    addr_zip character varying NOT NULL,
    addr_email character varying NOT NULL,
    phone_digits bigint NOT NULL,
-   emergency_contact_relationship_type text REFERENCES emergency_contact_relationship_type(emergency_contact_relationship_type) NOT NULL,
+   emergency_contact_relationship_type emergency_contact_relationship_type NOT NULL,
    name_emergency character varying NOT NULL,
    phone_emergency bigint NOT NULL,
    time_recorded timestamp with time zone NOT NULL DEFAULT now(),
@@ -61,8 +46,8 @@ CREATE TABLE IF NOT EXISTS participant (
 CREATE TABLE IF NOT EXISTS data_history (
     id bigint GENERATED ALWAYS AS IDENTITY,
     actor_id bigint REFERENCES participant(id) NOT NULL,
-    action_name text REFERENCES data_history_type(history_type) NOT NULL,
-    table_source text REFERENCES table_ref(table_ref) NOT NULL,
+    action_name data_history_type NOT NULL,
+    table_source table_ref NOT NULL,
     new_data json NOT NULL,
     old_data json NOT NULL,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
@@ -74,7 +59,7 @@ CREATE TABLE IF NOT EXISTS event_info (
     event_title character varying NOT NULL,
     date_start date NOT NULL,
     date_end date NOT NULL,
-    event_status text REFERENCES event_status(event_status_type) NOT NULL,
+    event_status event_status NOT NULL,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
@@ -92,7 +77,7 @@ CREATE TABLE IF NOT EXISTS guest (
     registration_id bigint REFERENCES registration(id) NOT NULL,
     raw_guest_name text NOT NULL,
     guest_profile_id bigint REFERENCES participant(id),
-    relationship text REFERENCES guest_relationship_type(guest_relationship_type) NOT NULL,
+    relationship guest_relationship_type NOT NULL,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
 
@@ -102,8 +87,8 @@ CREATE TABLE IF NOT EXISTS transaction_ (
     actor_id bigint REFERENCES participant(id) NOT NULL,
     recipient_id bigint REFERENCES participant(id) NOT NULL,
     amount decimal(16, 8) NOT NULL,
-    transaction_type text REFERENCES transaction_type(transaction_type) NOT NULL,
-    instrument_type text REFERENCES transaction_instrument(transaction_instrument_type) NOT NULL,
+    transaction_type transaction_type NOT NULL,
+    instrument_type transaction_instrument NOT NULL,
     memo text,
     time_recorded timestamp with time zone NOT NULL DEFAULT now(),
     PRIMARY KEY (id) );
@@ -251,7 +236,7 @@ CREATE OR REPLACE VIEW event_statistics AS
             FROM
                 transaction_ t
             WHERE
-                t.transaction_type = 'INVOICE'
+                t.transaction_type = 'INVOICE'::transaction_type
             GROUP BY
                 t.event_info_id
         ),
@@ -263,7 +248,7 @@ CREATE OR REPLACE VIEW event_statistics AS
             FROM
                 transaction_ t
             WHERE
-                t.transaction_type = 'EXPENSES'
+                t.transaction_type = 'EXPENSE'::transaction_type
             GROUP BY
                 t.event_info_id
         ),
@@ -275,7 +260,7 @@ CREATE OR REPLACE VIEW event_statistics AS
             FROM
                 transaction_ t
             WHERE
-                t.transaction_type = 'INCOME'
+                t.transaction_type = 'INCOME'::transaction_type
             GROUP BY
                 t.event_info_id
         ),
@@ -296,7 +281,7 @@ CREATE OR REPLACE VIEW event_statistics AS
             FROM
                 registration r
                     JOIN
-                guest g ON g.registration_id = r.id AND g.relationship IN ('ADULT', 'CHILD') AND (g.guest_profile_id IS NULL OR g.guest_profile_id NOT IN (r.participant_id))
+                guest g ON g.registration_id = r.id AND g.relationship IN ('ADULT'::guest_relationship_type, 'CHILD'::guest_relationship_type) AND (g.guest_profile_id IS NULL OR g.guest_profile_id NOT IN (r.participant_id))
             GROUP BY
                 r.event_info_id
         )

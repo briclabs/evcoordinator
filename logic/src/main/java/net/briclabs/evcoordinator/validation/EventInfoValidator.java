@@ -1,6 +1,5 @@
 package net.briclabs.evcoordinator.validation;
 
-import net.briclabs.evcoordinator.EventInfoLogic;
 import net.briclabs.evcoordinator.generated.tables.pojos.EventInfo;
 import net.briclabs.evcoordinator.generated.tables.records.EventInfoRecord;
 
@@ -37,13 +36,13 @@ public class EventInfoValidator extends AbstractValidator<EventInfoRecord, Event
             addMessage(table().DATE_START, MUST_BE_BEFORE_END);
         }
 
-        var eventStatus = EventInfoLogic.EVENT_STATUS.fromString(pojo().getEventStatus());
-        if (eventStatus.isEmpty()) {
+        var eventStatus = pojo().getEventStatus();
+        if (eventStatus == null) {
             addMessage(table().EVENT_STATUS, MUST_BE_VALID_VALUE);
             return;
         }
 
-        switch (eventStatus.get()) {
+        switch (eventStatus) {
             case CURRENT -> {
                 if (pojo().getDateEnd().isEqual(NOW_DATE) || pojo().getDateEnd().isAfter(NOW_DATE)) {
                     return;

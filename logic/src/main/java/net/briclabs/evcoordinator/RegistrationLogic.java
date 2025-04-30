@@ -1,14 +1,12 @@
 package net.briclabs.evcoordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.Registration;
 import net.briclabs.evcoordinator.generated.tables.pojos.RegistrationWithLabels;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationRecord;
 import net.briclabs.evcoordinator.generated.tables.records.RegistrationWithLabelsRecord;
 import net.briclabs.evcoordinator.validation.RegistrationValidator;
 import org.jooq.DSLContext;
-import org.jooq.JSON;
 
 import java.util.AbstractMap;
 import java.util.Map;
@@ -52,21 +50,13 @@ public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, R
                 .fetchOptional()
                 .map(RegistrationRecord::getId);
         if (insertedId.isPresent()) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.INSERTED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(pojo),
-                    JSON.json("{}"),
-                    null
-            ));
+            recordHistoryForInsert(historyLogic, actorId, convertToJson(pojo));
         }
         return insertedId;
     }
 
     @Override
-    public int updateExisting(long actorId, Registration update) throws RegistrationException, GuestLogic.GuestException {
+    public int updateExisting(long actorId, Registration update) throws RegistrationException {
         if (update.getId() == null) {
             throw new RegistrationException(
                     new AbstractMap.SimpleImmutableEntry<>(GENERAL_MESSAGE_KEY, "ID to update was missing. Please review your input and try again."),
@@ -91,15 +81,7 @@ public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, R
                 )
                 .execute();
         if (updatedRecords > 0) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(update),
-                    convertToJson(originalRecord),
-                    null
-            ));
+            recordHistoryForUpdate(historyLogic, actorId, convertToJson(originalRecord), convertToJson(update));
         }
         return updatedRecords;
     }
@@ -112,15 +94,7 @@ public class RegistrationLogic extends WriteAndDeleteLogic<RegistrationRecord, R
         deleteCorrespondingGuests(actorId, idToDelete);
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.DELETED.name(),
-                    getTable().getName().toUpperCase(),
-                    JSON.json("{}"),
-                    convertToJson(originalRecord),
-                    null
-            ));
+            recordHistoryForDeletion(historyLogic, actorId, convertToJson(originalRecord));
         }
     }
 

@@ -1,12 +1,10 @@
 package net.briclabs.evcoordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.generated.tables.records.ParticipantRecord;
 import net.briclabs.evcoordinator.validation.ParticipantValidator;
 import org.jooq.DSLContext;
-import org.jooq.JSON;
 import org.jooq.impl.DSL;
 import org.jooq.tools.StringUtils;
 
@@ -93,8 +91,8 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
     @Override
     public boolean isAlreadyRecorded(Participant pojo) {
         Map<String, String> criteria = Map.ofEntries(
-                entry(getTable().PARTICIPANT_TYPE.getName(), pojo.getParticipantType()),
-                entry(getTable().SPONSOR.getName(), pojo.getParticipantType()),
+                entry(getTable().PARTICIPANT_TYPE.getName(), pojo.getParticipantType().getLiteral()),
+                entry(getTable().SPONSOR.getName(), pojo.getParticipantType().getLiteral()),
                 entry(getTable().NAME_FIRST.getName(), pojo.getNameFirst()),
                 entry(getTable().NAME_LAST.getName(), pojo.getNameLast()),
                 entry(getTable().NAME_NICK.getName(), StringUtils.defaultString(pojo.getNameNick(), "")),
@@ -107,7 +105,7 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
                 entry(getTable().ADDR_EMAIL.getName(), pojo.getAddrEmail()),
                 entry(getTable().NAME_EMERGENCY.getName(), pojo.getNameEmergency()),
                 entry(getTable().PHONE_EMERGENCY.getName(), pojo.getPhoneEmergency().toString()),
-                entry(getTable().EMERGENCY_CONTACT_RELATIONSHIP_TYPE.getName(), pojo.getEmergencyContactRelationshipType()),
+                entry(getTable().EMERGENCY_CONTACT_RELATIONSHIP_TYPE.getName(), pojo.getEmergencyContactRelationshipType().getLiteral()),
                 entry(getTable().PHONE_DIGITS.getName(), pojo.getPhoneDigits().toString()));
         return fetchByCriteria(true, criteria, getIdColumn().getName(), false, 0, 1).count() > 0;
     }
@@ -136,15 +134,7 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
                 .fetchOptional()
                 .map(ParticipantRecord::getId);
         if (insertedId.isPresent()) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.INSERTED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(pojo),
-                    JSON.json("{}"),
-                    null
-            ));
+            recordHistoryForInsert(historyLogic, actorId, convertToJson(pojo));
         }
         return insertedId;
     }
@@ -196,15 +186,7 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
                                 .or(getTable().PHONE_DIGITS.notEqual(update.getPhoneDigits()))
                 ).execute();
         if (updatedRecords > 0) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(update),
-                    convertToJson(originalRecord),
-                    null
-            ));
+            recordHistoryForUpdate(historyLogic, actorId, convertToJson(originalRecord), convertToJson(update));
         }
         return updatedRecords;
     }

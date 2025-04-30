@@ -2,11 +2,9 @@ package net.briclabs.evcoordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import net.briclabs.evcoordinator.generated.tables.pojos.Configuration;
-import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.records.ConfigurationRecord;
 import net.briclabs.evcoordinator.validation.ConfigurationValidator;
 import org.jooq.DSLContext;
-import org.jooq.JSON;
 import org.jooq.JSONB;
 
 import java.util.AbstractMap;
@@ -65,15 +63,7 @@ public class ConfigurationLogic extends WriteLogic<ConfigurationRecord, Configur
                 .fetchOptional()
                 .map(ConfigurationRecord::getId);
         if (insertedId.isPresent()) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.INSERTED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(pojo),
-                    JSON.json("{}"),
-                    null
-            ));
+            recordHistoryForInsert(historyLogic, actorId, convertToJson(pojo));
         }
         return insertedId;
     }
@@ -109,15 +99,7 @@ public class ConfigurationLogic extends WriteLogic<ConfigurationRecord, Configur
                 )
                 .execute();
         if (updatedRecords > 0) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(update),
-                    convertToJson(originalRecord),
-                    null
-            ));
+            recordHistoryForUpdate(historyLogic, actorId, convertToJson(originalRecord), convertToJson(update));
         }
         return updatedRecords;
     }

@@ -29,10 +29,10 @@ public class TransactionValidator extends AbstractValidator<Transaction_Record, 
         if (pojo().getAmount() == null || pojo().getAmount().compareTo(BigDecimal.ZERO) < 0) {
             addMessage(table().AMOUNT, MUST_BE_POSITIVE_NUMBER);
         }
-        if (pojo().getTransactionType().isBlank()) {
+        if (pojo().getTransactionType() == null) {
             addMessage(table().TRANSACTION_TYPE, MUST_BE_VALID_VALUE);
         }
-        if (pojo().getInstrumentType().isBlank()) {
+        if (pojo().getInstrumentType() == null) {
             addMessage(table().INSTRUMENT_TYPE, MUST_BE_VALID_VALUE);
         }
         if (pojo().getMemo() != null && !pojo().getMemo().isEmpty() && pojo().getMemo().isBlank()) {

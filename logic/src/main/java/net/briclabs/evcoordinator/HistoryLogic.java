@@ -18,15 +18,6 @@ import static net.briclabs.evcoordinator.generated.tables.DataHistory.DATA_HISTO
 public class HistoryLogic extends WriteLogic<DataHistoryRecord, DataHistory, net.briclabs.evcoordinator.generated.tables.DataHistory> {
 
     /**
-     * Represents the type of action performed in the context of data history management.
-     */
-    public enum ActionType {
-        INSERTED,
-        UPDATED,
-        DELETED
-    }
-
-    /**
      * Constructor for the HistoryLogic class, initializing components required for data history management.
      *
      * @param objectMapper the ObjectMapper instance used for JSON processing
@@ -40,8 +31,8 @@ public class HistoryLogic extends WriteLogic<DataHistoryRecord, DataHistory, net
     public boolean isAlreadyRecorded(DataHistory pojo) {
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().ACTOR_ID.getName(), Long.toString(pojo.getActorId())),
-                entry(getTable().ACTION_NAME.getName(), pojo.getActionName()),
-                entry(getTable().TABLE_SOURCE.getName(), pojo.getTableSource()),
+                entry(getTable().ACTION_NAME.getName(), pojo.getActionName().getLiteral()),
+                entry(getTable().TABLE_SOURCE.getName(), pojo.getTableSource().getLiteral()),
                 entry(getTable().NEW_DATA.getName(), pojo.getNewData().toString()),
                 entry(getTable().OLD_DATA.getName(), pojo.getOldData().toString()));
         return fetchByCriteria(true, criteria, getIdColumn().getName(), false,0, 1).count() > 0;

@@ -2,7 +2,6 @@ package net.briclabs.evcoordinator;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import net.briclabs.evcoordinator.generated.tables.pojos.DataHistory;
 import net.briclabs.evcoordinator.generated.tables.pojos.TransactionWithLabels;
 import net.briclabs.evcoordinator.generated.tables.pojos.Transaction_;
 import net.briclabs.evcoordinator.generated.tables.records.TransactionWithLabelsRecord;
@@ -10,7 +9,6 @@ import net.briclabs.evcoordinator.generated.tables.records.Transaction_Record;
 import net.briclabs.evcoordinator.validation.TransactionValidator;
 import org.apache.commons.lang3.StringUtils;
 import org.jooq.DSLContext;
-import org.jooq.JSON;
 import org.jooq.impl.DSL;
 
 import java.util.AbstractMap;
@@ -35,8 +33,8 @@ public class TransactionLogic extends WriteAndDeleteLogic<Transaction_Record, Tr
         Map<String, String> criteria = Map.ofEntries(
                 entry(getTable().ACTOR_ID.getName(), Long.toString(pojo.getActorId())),
                 entry(getTable().RECIPIENT_ID.getName(), Long.toString(pojo.getRecipientId())),
-                entry(getTable().TRANSACTION_TYPE.getName(), pojo.getTransactionType()),
-                entry(getTable().INSTRUMENT_TYPE.getName(), pojo.getInstrumentType()),
+                entry(getTable().TRANSACTION_TYPE.getName(), pojo.getTransactionType().getLiteral()),
+                entry(getTable().INSTRUMENT_TYPE.getName(), pojo.getInstrumentType().getLiteral()),
                 entry(getTable().AMOUNT.getName(), pojo.getAmount().toPlainString()),
                 entry(getTable().MEMO.getName(), StringUtils.defaultString(pojo.getMemo(), "")),
                 entry(getTable().EVENT_INFO_ID.getName(), Long.toString(pojo.getEventInfoId())));
@@ -58,15 +56,7 @@ public class TransactionLogic extends WriteAndDeleteLogic<Transaction_Record, Tr
                 .fetchOptional()
                 .map(Transaction_Record::getId);
         if (insertedId.isPresent()) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.INSERTED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(pojo),
-                    JSON.json("{}"),
-                    null
-            ));
+            recordHistoryForInsert(historyLogic, actorId, convertToJson(pojo));
         }
         return insertedId;
     }
@@ -101,15 +91,7 @@ public class TransactionLogic extends WriteAndDeleteLogic<Transaction_Record, Tr
                                 .or(getTable().EVENT_INFO_ID.notEqual(update.getEventInfoId()))
                 ).execute();
         if (updatedRecords > 0) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.UPDATED.name(),
-                    getTable().getName().toUpperCase(),
-                    convertToJson(update),
-                    convertToJson(originalRecord),
-                    null
-            ));
+            recordHistoryForUpdate(historyLogic, actorId, convertToJson(originalRecord), convertToJson(update));
         }
         return updatedRecords;
     }
@@ -121,15 +103,7 @@ public class TransactionLogic extends WriteAndDeleteLogic<Transaction_Record, Tr
                 "Transaction with ID %d to be deleted was not found.".formatted(idToDelete)));
         var deletedRecords = jooq.deleteFrom(getTable()).where(getTable().ID.eq(idToDelete)).execute();
         if (deletedRecords > 0) {
-            historyLogic.insertNew(actorId, new DataHistory(
-                    null,
-                    actorId,
-                    HistoryLogic.ActionType.DELETED.name(),
-                    getTable().getName().toUpperCase(),
-                    JSON.json("{}"),
-                    convertToJson(originalRecord),
-                    null
-            ));
+            recordHistoryForDeletion(historyLogic, actorId, convertToJson(originalRecord));
         }
     }
 
