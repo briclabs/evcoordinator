@@ -50,7 +50,7 @@ public class ParticipantValidator extends AbstractValidator<ParticipantRecord, P
         if (pojo().getAddrCity().isBlank()) {
             addMessage(table().ADDR_CITY, MUST_NOT_BE_BLANK);
         }
-        if (pojo().getAddrStateAbbr().isBlank() || pojo().getAddrStateAbbr().trim().length() != 2) {
+        if (pojo().getAddrStateAbbr() == null) {
             addMessage(table().ADDR_STATE_ABBR, MUST_BE_VALID_STATE_ABBR);
         }
         if (!(pojo().getAddrZip().trim().length() == 5 || pojo().getAddrZip().trim().replace("-", "").length() == 9)) {

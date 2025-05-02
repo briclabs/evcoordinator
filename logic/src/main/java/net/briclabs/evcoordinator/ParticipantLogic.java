@@ -1,6 +1,7 @@
 package net.briclabs.evcoordinator;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import net.briclabs.evcoordinator.generated.enums.ParticipantType;
 import net.briclabs.evcoordinator.generated.tables.pojos.Participant;
 import net.briclabs.evcoordinator.generated.tables.records.ParticipantRecord;
 import net.briclabs.evcoordinator.validation.ParticipantValidator;
@@ -45,7 +46,7 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
     public ListWithCount<Participant> fetchAttendeeByNameAndEmail(String nameFirst, String nameLast, String addrEmail) {
         return fetchByCriteria(
                 true,
-                Map.of(net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.PARTICIPANT_TYPE.getName(), "ATTENDEE",
+                Map.of(net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.PARTICIPANT_TYPE.getName(), ParticipantType.ATTENDEE.getLiteral(),
                         net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.NAME_FIRST.getName(), nameFirst,
                         net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.NAME_LAST.getName(), nameLast,
                         net.briclabs.evcoordinator.generated.tables.Participant.PARTICIPANT.ADDR_EMAIL.getName(), addrEmail),
@@ -100,7 +101,7 @@ public class ParticipantLogic extends WriteLogic<ParticipantRecord, Participant,
                 entry(getTable().ADDR_STREET_1.getName(), pojo.getAddrStreet_1()),
                 entry(getTable().ADDR_STREET_2.getName(), StringUtils.defaultString(pojo.getAddrStreet_2(), "")),
                 entry(getTable().ADDR_CITY.getName(), pojo.getAddrCity()),
-                entry(getTable().ADDR_STATE_ABBR.getName(), pojo.getAddrStateAbbr()),
+                entry(getTable().ADDR_STATE_ABBR.getName(), pojo.getAddrStateAbbr().getLiteral()),
                 entry(getTable().ADDR_ZIP.getName(), pojo.getAddrZip().toString()),
                 entry(getTable().ADDR_EMAIL.getName(), pojo.getAddrEmail()),
                 entry(getTable().NAME_EMERGENCY.getName(), pojo.getNameEmergency()),

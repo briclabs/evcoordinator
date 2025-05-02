@@ -9,6 +9,13 @@ CREATE TYPE emergency_contact_relationship_type AS ENUM ('FRIEND', 'FAMILY');
 CREATE TYPE event_status AS ENUM ('CURRENT', 'PAST', 'CANCELLED');
 CREATE TYPE transaction_instrument AS ENUM ('ELECTRONIC', 'CHECK', 'CASH');
 CREATE TYPE transaction_type AS ENUM ('INVOICE', 'EXPENSE', 'INCOME');
+CREATE TYPE us_state_abbreviations AS ENUM (
+    'AL', 'AK', 'AZ', 'AR', 'AS', 'CA', 'CO', 'CT', 'DE', 'DC',
+    'FL', 'GA', 'GU', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY',
+    'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE',
+    'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 'MP', 'OH', 'OK',
+    'OR', 'PA', 'PR', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT',
+    'VA', 'VI', 'WA', 'WV', 'WI', 'WY');
 
 CREATE TABLE IF NOT EXISTS configuration (
    id bigint GENERATED ALWAYS AS IDENTITY,
@@ -32,7 +39,7 @@ CREATE TABLE IF NOT EXISTS participant (
    addr_street_1 character varying NOT NULL,
    addr_street_2 character varying,
    addr_city character varying NOT NULL,
-   addr_state_abbr character varying NOT NULL,
+   addr_state_abbr us_state_abbreviations NOT NULL,
    addr_zip character varying NOT NULL,
    addr_email character varying NOT NULL,
    phone_digits bigint NOT NULL,
@@ -281,7 +288,9 @@ CREATE OR REPLACE VIEW event_statistics AS
             FROM
                 registration r
                     JOIN
-                guest g ON g.registration_id = r.id AND g.relationship IN ('ADULT'::guest_relationship_type, 'CHILD'::guest_relationship_type) AND (g.guest_profile_id IS NULL OR g.guest_profile_id NOT IN (r.participant_id))
+                guest g ON g.registration_id = r.id AND
+                           g.relationship IN ('ADULT'::guest_relationship_type, 'CHILD'::guest_relationship_type) AND
+                           (g.guest_profile_id IS NULL OR g.guest_profile_id NOT IN (select r2.participant_id from registration r2 where r2.event_info_id = r.event_info_id))
             GROUP BY
                 r.event_info_id
         )
