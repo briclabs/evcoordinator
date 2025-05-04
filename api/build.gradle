@@ -13,7 +13,7 @@ apply plugin: 'io.spring.dependency-management'
 group 'org.briclabs'
 version '1.0'
 
-project.buildDir = '../docker/api_build/'
+project.buildDir = '../evcoordinator/api_build/'
 
 configurations {
     compileOnly {

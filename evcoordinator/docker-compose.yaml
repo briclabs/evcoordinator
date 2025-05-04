@@ -54,6 +54,8 @@ services:
       - evcoordinator_default
     env_file:
       - .env
+    volumes:
+      - data:/var/lib/postgresql/data
 
 networks:
   bricthentic_default:
@@ -63,3 +65,6 @@ networks:
   evcoordinator_default:
     driver: bridge
     name: evcoordinator_default
+
+volumes:
+  data:
