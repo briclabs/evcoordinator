@@ -2,9 +2,9 @@ services:
 
   api:
     container_name: evcoordinator-api
-    image: 'api:latest'
     build:
-      context: .
+      context: ../api
+      dockerfile: ../api/Dockerfile.api
     ports:
       - "8080:8080"
     depends_on:
@@ -13,19 +13,38 @@ services:
     networks:
       - bricthentic_default
       - evcoordinator_default
-    env_file:
-      - .env
+    environment:
+      - POSTGRES_URL=${POSTGRES_URL}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - OAUTH2_CLIENT_NAME=${OAUTH2_CLIENT_NAME}
+      - OAUTH2_CLIENT_ID=${OAUTH2_CLIENT_ID}
+      - OAUTH2_CLIENT_AUTH_METHOD=${OAUTH2_CLIENT_AUTH_METHOD}
+      - OAUTH2_CLIENT_SECRET=${OAUTH2_CLIENT_SECRET}
+      - OAUTH2_AUTH_GRANT_TYPE=${OAUTH2_AUTH_GRANT_TYPE}
+      - OAUTH2_REDIRECT_URI=${OAUTH2_REDIRECT_URI}
+      - OAUTH2_ISSUER_URI=${OAUTH2_ISSUER_URI}
+      - OAUTH2_TOKEN_URI=${OAUTH2_TOKEN_URI}
+      - OAUTH2_AUTHORIZATION_URI=${OAUTH2_AUTHORIZATION_URI}
+      - OAUTH2_USER_INFO_URI=${OAUTH2_USER_INFO_URI}
+      - OAUTH2_USER_NAME_ATTRIBUTE=${OAUTH2_USER_NAME_ATTRIBUTE}
+      - OAUTH2_INTROSPECTION_URI=${OAUTH2_INTROSPECTION_URI}
+      - OAUTH2_JWT_ISSUER_URI=${OAUTH2_JWT_ISSUER_URI}
+      - OAUTH2_JWT_JWK_SET_URI=${OAUTH2_JWT_JWK_SET_URI}
+      - SWAGGER_UI_PATH=${SWAGGER_UI_PATH}
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT}
+      - LOGGING_LEVEL_SECURITY=${LOGGING_LEVEL_SECURITY}
+      - CORS_ORIGINS=${CORS_ORIGINS}
 
   liquibase:
     container_name: evcoordinator-liquibase
-    image: liquibase/liquibase:4.31.1-alpine
+    build:
+      context: ../data
+      dockerfile: ../data/Dockerfile.liquibase
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - .env
-    volumes:
-      - ../data/src/main/resources/changelog:/liquibase/changelog
     networks:
       - evcoordinator_default
     command: >
@@ -36,26 +55,33 @@ services:
       --password="${POSTGRES_PASSWORD}"
       --logLevel=debug
       update
+    environment:
+      - POSTGRES_URL=${POSTGRES_URL}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
   db:
     container_name: evcoordinator-db
     image: 'postgres:15.0-alpine3.16'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready --dbname=evcoordinator --username=postgres-user"]
+      test: ["CMD-SHELL", "pg_isready --dbname=$POSTGRES_DB --username=$POSTGRES_USER"]
       interval: 10s
       timeout: 5s
       retries: 5
-# Uncomment this to allow for direct DB access.
     ports:
       - "5432:5432"
     expose:
       - 5432
     networks:
       - evcoordinator_default
-    env_file:
-      - .env
     volumes:
       - data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_URL=${POSTGRES_URL}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
 
 networks:
   bricthentic_default:

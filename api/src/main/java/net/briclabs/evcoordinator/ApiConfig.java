@@ -54,6 +54,7 @@ public class ApiConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .authorizeHttpRequests(authorizeHttpRequests -> authorizeHttpRequests
+                        .requestMatchers("/v1/statistics/latest").permitAll()
                         .requestMatchers("/v1/configuration/latest").permitAll()
                         .requestMatchers("/v1/event/info/latest").permitAll()
                         .requestMatchers("/v1/registration").permitAll()

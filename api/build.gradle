@@ -13,8 +13,6 @@ apply plugin: 'io.spring.dependency-management'
 group 'org.briclabs'
 version '1.0'
 
-project.buildDir = '../evcoordinator/api_build/'
-
 configurations {
     compileOnly {
         extendsFrom annotationProcessor

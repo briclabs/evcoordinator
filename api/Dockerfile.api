@@ -1,4 +1,4 @@
 FROM eclipse-temurin:19-jre-alpine
-COPY /api_build/libs/api-*.jar api.jar
+COPY build/libs/api-*.jar api.jar
 EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "api.jar"]
