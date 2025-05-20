@@ -58,6 +58,7 @@ public class ApiConfig {
                         .requestMatchers("/v1/configuration/latest").permitAll()
                         .requestMatchers("/v1/event/info/latest").permitAll()
                         .requestMatchers("/v1/registration").permitAll()
+                        .requestMatchers("/v1/participant/preexists").permitAll()
                         .requestMatchers("/v1/staticLookups/emergencyContactRelationshipType").permitAll()
                         .requestMatchers("/v1/staticLookups/eventStatus").permitAll()
                         .requestMatchers("/v1/staticLookups/guestRelationshipType").permitAll()
@@ -66,7 +67,8 @@ public class ApiConfig {
                 .oauth2ResourceServer(httpSecurityOAuth2ResourceServerConfigurer -> httpSecurityOAuth2ResourceServerConfigurer
                         .jwt(Customizer.withDefaults()))
                 .cors(Customizer.withDefaults())
-                .csrf((csrf) -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()));
+                .csrf((csrf) -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+                .csrf((csrf) -> csrf.ignoringRequestMatchers("/v1/participant/preexists"));
         return http.build();
     }
 
