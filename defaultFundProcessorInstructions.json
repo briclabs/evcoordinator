@@ -1,7 +1,10 @@
 {
   "instructions": [
-    "bullet1",
-    "bullet2"
+    "Log in.",
+    "Click 'Send and Request'.",
+    "Where it says 'Name, username, email, mobile', enter 'eric_h@123mail.org' and click 'Next'.",
+    "Enter the amount of your donation.",
+    "Click 'Send' when you are ready."
   ],
   "donationAddress": {
     "to": "My Name",
